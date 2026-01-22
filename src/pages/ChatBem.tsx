@@ -51,9 +51,9 @@ export function ChatBem() {
 
     try {
       // Verificar se a API key está configurada
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
       if (!apiKey) {
-        throw new Error('ERRO: Variável de ambiente VITE_OPENAI_API_KEY não está definida. Configure o arquivo .env com sua chave da OpenAI.')
+        throw new Error('ERRO: Variável de ambiente VITE_GEMINI_API_KEY não está definida. Configure o arquivo .env com sua chave do Google Gemini.')
       }
 
       // Criar contexto do usuário
@@ -87,37 +87,61 @@ ${userContext}
 
 Responda de forma amigável e útil!`
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages.slice(-5).map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            { role: 'user', content: userMessage.content }
-          ],
-          max_tokens: 500,
-          temperature: 0.8
-        })
-      })
+      // Construir histórico de conversas para contexto
+      const conversationHistory = messages.slice(-5).map(m =>
+        `${m.role === 'user' ? 'Usuário' : 'BEM'}: ${m.content}`
+      ).join('\n\n')
+
+      const fullPrompt = `${systemPrompt}
+
+Histórico da conversa:
+${conversationHistory}
+
+Usuário: ${userMessage.content}
+
+BEM:`
+
+      // Chamar Google Gemini API
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: fullPrompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.8,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 500,
+            }
+          })
+        }
+      )
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error?.message || 'Erro ao conectar com a API')
+        throw new Error(error.error?.message || 'Erro ao conectar com a API do Gemini')
       }
 
       const data = await response.json()
+
+      // Extrair texto da resposta do Gemini
+      const geminiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!geminiResponse) {
+        throw new Error('Resposta vazia do Gemini')
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.choices[0].message.content,
+        content: geminiResponse,
         timestamp: new Date()
       }
 
@@ -132,7 +156,7 @@ Responda de forma amigável e útil!`
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '😔 Desculpe, tive um problema para responder. Por favor, tente novamente ou verifique se a chave da OpenAI está configurada corretamente.',
+        content: '😔 Desculpe, tive um problema para responder. Por favor, tente novamente ou verifique se a chave do Google Gemini está configurada corretamente.',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
