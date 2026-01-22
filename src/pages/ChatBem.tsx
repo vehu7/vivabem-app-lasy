@@ -101,58 +101,90 @@ Usuário: ${userMessage.content}
 
 BEM:`
 
-      // Chamar Google Gemini API (usando gemini-1.5-flash - rápido e gratuito)
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: fullPrompt
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.8,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 500,
-            },
-            safetySettings: [
-              {
-                category: "HARM_CATEGORY_HARASSMENT",
-                threshold: "BLOCK_NONE"
+      // Tentar múltiplos modelos Gemini até encontrar um que funcione
+      const modelsToTry = [
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro-latest',
+        'gemini-1.5-pro',
+        'gemini-pro'
+      ]
+
+      const versionsToTry = ['v1', 'v1beta']
+
+      let response: Response | null = null
+      let lastError = ''
+
+      // Tentar diferentes combinações de versão e modelo
+      for (const version of versionsToTry) {
+        for (const model of modelsToTry) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`
+            console.log(`Tentando: ${version}/${model}`)
+
+            response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
               },
-              {
-                category: "HARM_CATEGORY_HATE_SPEECH",
-                threshold: "BLOCK_NONE"
-              },
-              {
-                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                threshold: "BLOCK_NONE"
-              },
-              {
-                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                threshold: "BLOCK_NONE"
-              }
-            ]
-          })
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{
+                    text: fullPrompt
+                  }]
+                }],
+                generationConfig: {
+                  temperature: 0.8,
+                  topK: 40,
+                  topP: 0.95,
+                  maxOutputTokens: 500,
+                },
+                safetySettings: [
+                  {
+                    category: "HARM_CATEGORY_HARASSMENT",
+                    threshold: "BLOCK_NONE"
+                  },
+                  {
+                    category: "HARM_CATEGORY_HATE_SPEECH",
+                    threshold: "BLOCK_NONE"
+                  },
+                  {
+                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold: "BLOCK_NONE"
+                  },
+                  {
+                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold: "BLOCK_NONE"
+                  }
+                ]
+              })
+            })
+
+            if (response.ok) {
+              console.log(`✅ Sucesso com: ${version}/${model}`)
+              break
+            } else {
+              const errorText = await response.text()
+              lastError = errorText
+              console.log(`❌ Falhou: ${version}/${model} - ${errorText.substring(0, 100)}`)
+            }
+          } catch (e: any) {
+            lastError = e.message
+            console.log(`❌ Erro de rede: ${version}/${model} - ${e.message}`)
+          }
         }
-      )
+        if (response?.ok) break
+      }
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Erro da API Gemini:', errorText)
+      if (!response || !response.ok) {
+        console.error('Todos os modelos falharam. Último erro:', lastError)
 
-        let errorMessage = 'Erro ao conectar com a API do Gemini'
+        let errorMessage = 'Não foi possível conectar com nenhum modelo do Gemini'
         try {
-          const errorJson = JSON.parse(errorText)
-          errorMessage = errorJson.error?.message || errorMessage
+          const errorJson = JSON.parse(lastError)
+          errorMessage = errorJson.error?.message || lastError.substring(0, 200)
         } catch (e) {
-          errorMessage = errorText.substring(0, 200)
+          errorMessage = lastError.substring(0, 300)
         }
 
         throw new Error(errorMessage)
