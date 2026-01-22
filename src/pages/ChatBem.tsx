@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Mascot } from '@/components/mascot'
 import { Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 interface Message {
   id: string
@@ -101,103 +102,45 @@ Usuário: ${userMessage.content}
 
 BEM:`
 
-      // Tentar múltiplos modelos Gemini até encontrar um que funcione
-      const modelsToTry = [
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-flash',
-        'gemini-1.5-pro-latest',
-        'gemini-1.5-pro',
-        'gemini-pro'
-      ]
+      // Inicializar Google Generative AI com SDK oficial
+      const genAI = new GoogleGenerativeAI(apiKey)
 
-      const versionsToTry = ['v1', 'v1beta']
-
-      let response: Response | null = null
-      let lastError = ''
-
-      // Tentar diferentes combinações de versão e modelo
-      for (const version of versionsToTry) {
-        for (const model of modelsToTry) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`
-            console.log(`Tentando: ${version}/${model}`)
-
-            response = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [{
-                    text: fullPrompt
-                  }]
-                }],
-                generationConfig: {
-                  temperature: 0.8,
-                  topK: 40,
-                  topP: 0.95,
-                  maxOutputTokens: 500,
-                },
-                safetySettings: [
-                  {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_NONE"
-                  },
-                  {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_NONE"
-                  },
-                  {
-                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold: "BLOCK_NONE"
-                  },
-                  {
-                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold: "BLOCK_NONE"
-                  }
-                ]
-              })
-            })
-
-            if (response.ok) {
-              console.log(`✅ Sucesso com: ${version}/${model}`)
-              break
-            } else {
-              const errorText = await response.text()
-              lastError = errorText
-              console.log(`❌ Falhou: ${version}/${model} - ${errorText.substring(0, 100)}`)
-            }
-          } catch (e: any) {
-            lastError = e.message
-            console.log(`❌ Erro de rede: ${version}/${model} - ${e.message}`)
+      // Usar o modelo gemini-pro (mais estável)
+      const model = genAI.getGenerativeModel({
+        model: "gemini-pro",
+        generationConfig: {
+          temperature: 0.8,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 500,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_NONE"
           }
-        }
-        if (response?.ok) break
-      }
+        ]
+      })
 
-      if (!response || !response.ok) {
-        console.error('Todos os modelos falharam. Último erro:', lastError)
+      // Gerar conteúdo
+      const result = await model.generateContent(fullPrompt)
+      const response = await result.response
+      const geminiResponse = response.text()
 
-        let errorMessage = 'Não foi possível conectar com nenhum modelo do Gemini'
-        try {
-          const errorJson = JSON.parse(lastError)
-          errorMessage = errorJson.error?.message || lastError.substring(0, 200)
-        } catch (e) {
-          errorMessage = lastError.substring(0, 300)
-        }
-
-        throw new Error(errorMessage)
-      }
-
-      const data = await response.json()
-      console.log('Resposta Gemini:', data)
-
-      // Extrair texto da resposta do Gemini
-      const geminiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (!geminiResponse) {
-        console.error('Estrutura da resposta:', JSON.stringify(data, null, 2))
-        throw new Error('Resposta vazia do Gemini. Verifique o console para mais detalhes.')
+        throw new Error('Resposta vazia do Gemini')
       }
 
       const assistantMessage: Message = {
