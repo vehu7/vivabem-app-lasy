@@ -82,7 +82,24 @@ function getDailyMessage(): MotivationalMessage {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserProfile | null>(() => {
     const stored = localStorage.getItem(STORAGE_KEYS.USER)
-    return stored ? JSON.parse(stored) : null
+    if (stored) {
+      try {
+        const parsedUser = JSON.parse(stored)
+        // Verificar se o perfil tem os novos campos (migração)
+        if (!parsedUser.dietaryPreferences || !parsedUser.mealRoutine || !parsedUser.consentTerms) {
+          // Perfil antigo detectado, forçar reset
+          console.log('Perfil antigo detectado, resetando para novo onboarding...')
+          localStorage.clear()
+          return null
+        }
+        return parsedUser
+      } catch (e) {
+        console.error('Erro ao carregar perfil:', e)
+        localStorage.clear()
+        return null
+      }
+    }
+    return null
   })
 
   const [isOnboarding, setIsOnboarding] = useState(() => {

@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { useApp } from '@/contexts/AppContext'
 import { MobileNav } from '@/components/mobile-nav'
+import { ResetButton } from '@/components/reset-button'
 import { OnboardingNew } from '@/pages/OnboardingNew'
 import { PlanSummary } from '@/pages/PlanSummary'
 import { Dashboard } from '@/pages/Dashboard'
@@ -38,6 +39,7 @@ export function App() {
           <Route path="/settings" element={<Settings />} />
         </Routes>
         <MobileNav />
+        <ResetButton />
       </div>
       <Toaster />
     </>
