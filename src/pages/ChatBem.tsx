@@ -101,9 +101,9 @@ Usuário: ${userMessage.content}
 
 BEM:`
 
-      // Chamar Google Gemini API
+      // Chamar Google Gemini API (usando gemini-1.5-flash - rápido e gratuito)
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
