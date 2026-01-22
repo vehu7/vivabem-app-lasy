@@ -12,6 +12,8 @@ export type FastingExperience = 'nunca' | 'iniciante' | 'intermediario' | 'avanc
 
 export type SleepQuality = 'ruim' | 'regular' | 'bom' | 'excelente'
 
+export type FastingFeeling = 'bem' | 'cansado' | 'sem_energia' | 'com_muita_energia' | 'sem_fome' | 'faminto' | 'normal'
+
 export interface MealRoutine {
   mealsPerDay: number
   breakfastTime?: string
@@ -196,6 +198,19 @@ export interface Notification {
   type: 'water' | 'meal' | 'workout' | 'weigh_in' | 'motivation'
   time: Date
   read: boolean
+}
+
+export interface FastingLogEntry {
+  id: string
+  date: Date
+  protocolType: string // ex: '16_8', '18_6', '20_4', etc
+  protocolName: string // ex: '16:8 (Iniciante)'
+  hours: number
+  startTime?: string
+  endTime?: string
+  feeling: FastingFeeling
+  notes?: string
+  completed: boolean
 }
 
 export interface PrivacySettings {

@@ -3,8 +3,11 @@ import { useApp } from '@/contexts/AppContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Clock, Play, StopCircle, Info } from 'lucide-react'
-import type { FastingSession } from '@/types'
+import { Clock, Play, StopCircle, Info, History, TrendingUp } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import type { FastingSession, FastingLogEntry, FastingFeeling } from '@/types'
 import { toast } from 'sonner'
 
 const FASTING_TYPES = [
@@ -58,9 +61,50 @@ const FASTING_TYPES = [
   }
 ]
 
+const STORAGE_KEY = 'fasting_history'
+
+const FEELING_OPTIONS: { value: FastingFeeling; label: string; emoji: string; color: string }[] = [
+  { value: 'com_muita_energia', label: 'Com muita energia', emoji: '⚡', color: 'text-green-500' },
+  { value: 'bem', label: 'Me senti bem', emoji: '😊', color: 'text-blue-500' },
+  { value: 'normal', label: 'Normal', emoji: '😐', color: 'text-gray-500' },
+  { value: 'cansado', label: 'Cansado', emoji: '😴', color: 'text-yellow-500' },
+  { value: 'sem_energia', label: 'Sem energia', emoji: '🥱', color: 'text-orange-500' },
+  { value: 'faminto', label: 'Muito faminto', emoji: '😫', color: 'text-red-500' },
+  { value: 'sem_fome', label: 'Sem fome', emoji: '🙂', color: 'text-teal-500' }
+]
+
 export function Fasting() {
   const { activeFasting, startFasting, endFasting } = useApp()
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [showLogDialog, setShowLogDialog] = useState(false)
+  const [selectedFeeling, setSelectedFeeling] = useState<FastingFeeling>('bem')
+  const [notes, setNotes] = useState('')
+  const [fastingHistory, setFastingHistory] = useState<FastingLogEntry[]>([])
+  const [completedSession, setCompletedSession] = useState<FastingSession | null>(null)
+
+  // Carregar histórico do localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        // Converter strings de data para objetos Date
+        const history = parsed.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date)
+        }))
+        setFastingHistory(history)
+      } catch (e) {
+        console.error('Erro ao carregar histórico de jejum:', e)
+      }
+    }
+  }, [])
+
+  // Salvar histórico no localStorage
+  const saveFastingHistory = (history: FastingLogEntry[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
+    setFastingHistory(history)
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -85,9 +129,41 @@ export function Fasting() {
   }
 
   const handleEndFasting = () => {
+    if (activeFasting) {
+      setCompletedSession(activeFasting)
+      setShowLogDialog(true)
+    }
+  }
+
+  const handleSaveLog = () => {
+    if (!completedSession) return
+
+    const fastingType = FASTING_TYPES.find(f => f.type === completedSession.type)
+
+    const logEntry: FastingLogEntry = {
+      id: crypto.randomUUID(),
+      date: new Date(),
+      protocolType: completedSession.type,
+      protocolName: fastingType?.name || completedSession.type,
+      hours: completedSession.targetDuration,
+      startTime: new Date(completedSession.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      endTime: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      feeling: selectedFeeling,
+      notes: notes.trim() || undefined,
+      completed: true
+    }
+
+    const newHistory = [logEntry, ...fastingHistory]
+    saveFastingHistory(newHistory)
+
     endFasting()
-    toast.success('Jejum finalizado!', {
-      description: 'Parabéns por completar seu jejum!'
+    setShowLogDialog(false)
+    setNotes('')
+    setSelectedFeeling('bem')
+    setCompletedSession(null)
+
+    toast.success('Jejum registrado!', {
+      description: 'Seu jejum foi salvo no histórico'
     })
   }
 
@@ -296,7 +372,160 @@ export function Fasting() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Histórico de jejuns */}
+        {fastingHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5 text-primary" />
+                Histórico de Jejuns
+              </CardTitle>
+              <CardDescription>
+                {fastingHistory.length} jejum{fastingHistory.length !== 1 ? 's' : ''} registrado{fastingHistory.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Estatísticas resumidas */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="pt-4">
+                    <div className="text-center">
+                      <TrendingUp className="w-6 h-6 text-primary mx-auto mb-2" />
+                      <div className="text-2xl font-bold">{fastingHistory.length}</div>
+                      <div className="text-xs text-muted-foreground">Total de jejuns</div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardContent className="pt-4">
+                    <div className="text-center">
+                      <Clock className="w-6 h-6 text-primary mx-auto mb-2" />
+                      <div className="text-2xl font-bold">
+                        {Math.round(fastingHistory.reduce((sum, entry) => sum + entry.hours, 0) / fastingHistory.length)}h
+                      </div>
+                      <div className="text-xs text-muted-foreground">Média de horas</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Lista de jejuns */}
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {fastingHistory.slice(0, 10).map((entry) => {
+                  const feelingOption = FEELING_OPTIONS.find(f => f.value === entry.feeling)
+                  return (
+                    <Card key={entry.id} className="hover:bg-muted/50 transition-colors">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{entry.protocolName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({entry.hours}h)
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.date.toLocaleDateString('pt-BR')} • {entry.startTime} - {entry.endTime}
+                            </div>
+                            {entry.notes && (
+                              <p className="text-sm text-muted-foreground mt-1 italic">
+                                "{entry.notes}"
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-2xl ${feelingOption?.color}`}>
+                              {feelingOption?.emoji}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {feelingOption?.label.split(' ')[0]}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {fastingHistory.length > 10 && (
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Mostrando últimos 10 jejuns de {fastingHistory.length}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Dialog de registro de jejum */}
+      <Dialog open={showLogDialog} onOpenChange={setShowLogDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Como você se sentiu?</DialogTitle>
+            <DialogDescription>
+              Registre como foi sua experiência com o jejum
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Seleção de sensação */}
+            <div className="space-y-3">
+              <Label>Como você se sentiu durante o jejum?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {FEELING_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSelectedFeeling(option.value)}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedFeeling === option.value
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="text-center space-y-1">
+                      <div className={`text-2xl ${option.color}`}>{option.emoji}</div>
+                      <div className="text-xs font-medium">{option.label}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Observações opcionais */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações (opcional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Como foi sua experiência? Teve dificuldades?"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowLogDialog(false)
+                setNotes('')
+                setSelectedFeeling('bem')
+                setCompletedSession(null)
+                endFasting()
+              }}
+              className="flex-1"
+            >
+              Pular
+            </Button>
+            <Button onClick={handleSaveLog} className="flex-1">
+              Salvar Registro
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
