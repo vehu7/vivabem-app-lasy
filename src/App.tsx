@@ -5,6 +5,8 @@ import { ResetButton } from '@/components/reset-button'
 import { OnboardingNew } from '@/pages/OnboardingNew'
 import { PlanSummary } from '@/pages/PlanSummary'
 import { Dashboard } from '@/pages/Dashboard'
+import { ChatBem } from '@/pages/ChatBem'
+import { Meditation } from '@/pages/Meditation'
 import { WaterTracker } from '@/pages/WaterTracker'
 import { Meals } from '@/pages/Meals'
 import { Fasting } from '@/pages/Fasting'
@@ -31,6 +33,8 @@ export function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/plan-summary" element={<PlanSummary />} />
+          <Route path="/chat" element={<ChatBem />} />
+          <Route path="/meditation" element={<Meditation />} />
           <Route path="/water" element={<WaterTracker />} />
           <Route path="/meals" element={<Meals />} />
           <Route path="/fasting" element={<Fasting />} />

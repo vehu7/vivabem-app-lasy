@@ -8,10 +8,54 @@ import type { FastingSession } from '@/types'
 import { toast } from 'sonner'
 
 const FASTING_TYPES = [
-  { type: '16_8' as const, name: '16:8', description: '16h de jejum, 8h de alimentação', hours: 16 },
-  { type: '18_6' as const, name: '18:6', description: '18h de jejum, 6h de alimentação', hours: 18 },
-  { type: '20_4' as const, name: '20:4', description: '20h de jejum, 4h de alimentação', hours: 20 },
-  { type: '24h' as const, name: '24h', description: 'Jejum de 24 horas', hours: 24 }
+  {
+    type: '16_8' as const,
+    name: '16:8 (Iniciante)',
+    description: '16h de jejum, 8h de alimentação',
+    hours: 16,
+    difficulty: 'iniciante',
+    benefits: 'Mais popular, fácil de seguir, ideal para começar'
+  },
+  {
+    type: '18_6' as const,
+    name: '18:6 (Intermediário)',
+    description: '18h de jejum, 6h de alimentação',
+    hours: 18,
+    difficulty: 'intermediario',
+    benefits: 'Aumenta autofagia, melhora queima de gordura'
+  },
+  {
+    type: '20_4' as const,
+    name: '20:4 - Dieta do Guerreiro',
+    description: '20h de jejum, 4h de alimentação',
+    hours: 20,
+    difficulty: 'avancado',
+    benefits: 'Máxima autofagia, desafiador mas eficaz'
+  },
+  {
+    type: '24h' as const,
+    name: '24h - OMAD',
+    description: 'Uma refeição por dia (24h)',
+    hours: 24,
+    difficulty: 'avancado',
+    benefits: 'Profunda cetose, máximo benefício metabólico'
+  },
+  {
+    type: 'personalizado' as const,
+    name: '12:12 (Suave)',
+    description: '12h de jejum, 12h de alimentação',
+    hours: 12,
+    difficulty: 'iniciante',
+    benefits: 'Suave, permite adaptação gradual'
+  },
+  {
+    type: 'personalizado' as const,
+    name: '14:10 (Moderado)',
+    description: '14h de jejum, 10h de alimentação',
+    hours: 14,
+    difficulty: 'iniciante',
+    benefits: 'Transição perfeita para 16:8'
+  }
 ]
 
 export function Fasting() {
