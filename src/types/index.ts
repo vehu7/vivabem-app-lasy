@@ -213,6 +213,21 @@ export interface FastingLogEntry {
   completed: boolean
 }
 
+export interface BodyMeasurement {
+  id: string
+  date: Date
+  weight: number
+  neck?: number // pescoço (cm)
+  chest?: number // peito (cm)
+  waist: number // cintura (cm)
+  hips: number // quadril (cm)
+  thigh?: number // coxa (cm)
+  arm?: number // braço (cm)
+  calf?: number // panturrilha (cm)
+  bodyFat?: number // % gordura corporal
+  notes?: string
+}
+
 export interface PrivacySettings {
   dataSharing: boolean
   analytics: boolean
