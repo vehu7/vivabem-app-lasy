@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, MessageCircle, Sparkles, Clock, TrendingDown, Apple, Dumbbell, Settings } from 'lucide-react'
+import { Home, MessageCircle, Sparkles, Clock, Apple, Dumbbell, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { to: '/chat', icon: MessageCircle, label: 'Chat BEM' },
   { to: '/meditation', icon: Sparkles, label: 'Meditar' },
   { to: '/fasting', icon: Clock, label: 'Jejum' },
-  { to: '/meals', icon: Apple, label: 'Comida' },
+  { to: '/meals', icon: Apple, label: 'Alimentação' },
   { to: '/workouts', icon: Dumbbell, label: 'Treino' },
   { to: '/settings', icon: Settings, label: 'Config' }
 ]

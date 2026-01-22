@@ -8,7 +8,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { ChatBem } from '@/pages/ChatBem'
 import { Meditation } from '@/pages/Meditation'
 import { WaterTracker } from '@/pages/WaterTracker'
-import { Meals } from '@/pages/Meals'
+import { Alimentacao } from '@/pages/Alimentacao'
 import { Fasting } from '@/pages/Fasting'
 import { Workouts } from '@/pages/Workouts'
 import { Progress } from '@/pages/Progress'
@@ -36,7 +36,7 @@ export function App() {
           <Route path="/chat" element={<ChatBem />} />
           <Route path="/meditation" element={<Meditation />} />
           <Route path="/water" element={<WaterTracker />} />
-          <Route path="/meals" element={<Meals />} />
+          <Route path="/meals" element={<Alimentacao />} />
           <Route path="/fasting" element={<Fasting />} />
           <Route path="/workouts" element={<Workouts />} />
           <Route path="/progress" element={<Progress />} />
