@@ -17,6 +17,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { Html5Qrcode } from 'html5-qrcode'
 import { BestFoodsDialog } from '@/components/best-foods-dialog'
 import { RecipesDialog } from '@/components/recipes-dialog'
+import { DietRecommendationDialog } from '@/components/diet-recommendation-dialog'
 
 const MEAL_TYPES = [
   { value: 'cafe', label: 'Café da Manhã', icon: Coffee },
@@ -249,6 +250,21 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
     setScannedProduct(null)
 
     try {
+      // Verificar se já existe uma instância e limpar
+      if (barcodeScannerRef.current) {
+        await stopBarcodeScanner()
+      }
+
+      // Solicitar permissões primeiro
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }
+        })
+        stream.getTracks().forEach(track => track.stop())
+      } catch (permError: any) {
+        throw new Error('Permissão de câmera negada. Acesse as configurações do navegador para permitir o acesso à câmera.')
+      }
+
       const html5QrCode = new Html5Qrcode("barcode-reader")
       barcodeScannerRef.current = html5QrCode
 
@@ -256,7 +272,8 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 250, height: 150 }
+          qrbox: { width: 250, height: 150 },
+          formatsToSupport: [0, 1, 2, 3] // EAN-13, EAN-8, UPC-A, UPC-E
         },
         async (decodedText) => {
           // Código de barras detectado
@@ -265,7 +282,7 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
           })
 
           // Parar scanner
-          stopBarcodeScanner()
+          await stopBarcodeScanner()
 
           // Buscar produto
           try {
@@ -288,7 +305,8 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
     } catch (error: any) {
       console.error('Erro ao iniciar scanner:', error)
       toast.error('Erro ao acessar câmera', {
-        description: error.message || 'Verifique as permissões da câmera'
+        description: error.message || 'Verifique as permissões nas configurações do navegador',
+        duration: 6000
       })
       setIsScanningBarcode(false)
     }
@@ -328,21 +346,32 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY
       if (!apiKey) {
-        throw new Error('Chave do Gemini não configurada')
+        throw new Error('Chave da API Gemini não configurada. Configure VITE_GEMINI_API_KEY no arquivo .env')
+      }
+
+      // Validar tamanho do arquivo (máx 4MB)
+      if (file.size > 4 * 1024 * 1024) {
+        throw new Error('Imagem muito grande. Use uma foto menor que 4MB.')
+      }
+
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Arquivo inválido. Use uma imagem (JPG, PNG, etc.)')
       }
 
       // Converter imagem para base64
       const reader = new FileReader()
       reader.readAsDataURL(file)
 
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         reader.onload = resolve
+        reader.onerror = reject
       })
 
       const base64Image = (reader.result as string).split(',')[1]
 
       const genAI = new GoogleGenerativeAI(apiKey)
-      const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" })
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
       const prompt = `Analise esta foto de comida e identifique todos os alimentos visíveis. Para cada alimento:
 
@@ -385,39 +414,54 @@ Formato da resposta (JSON):
 
       const response = result.response.text()
 
-      // Tentar extrair JSON da resposta
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
+      // Tentar extrair JSON da resposta (mais robusto)
+      let jsonMatch = response.match(/```json\s*(\{[\s\S]*?\})\s*```/)
+      if (!jsonMatch) {
+        jsonMatch = response.match(/\{[\s\S]*\}/)
+      }
+
       if (jsonMatch) {
-        const data = JSON.parse(jsonMatch[0])
+        const jsonText = jsonMatch[1] || jsonMatch[0]
+        const data = JSON.parse(jsonText)
+
+        if (!data.foods || !Array.isArray(data.foods)) {
+          throw new Error('Resposta da IA em formato inválido')
+        }
 
         // Converter para FoodItem[]
         const detectedFoods: FoodItem[] = data.foods.map((food: any, index: number) => ({
           id: `photo-${Date.now()}-${index}`,
-          name: food.name,
+          name: food.name || 'Alimento desconhecido',
           category: 'outro' as const,
-          portion: food.portion,
-          calories: food.calories,
-          protein: food.protein,
-          carbs: food.carbs,
-          fat: food.fat,
-          fiber: 0,
+          portion: food.portion || '100g',
+          calories: Math.round(food.calories || 0),
+          protein: Math.round(food.protein || 0),
+          carbs: Math.round(food.carbs || 0),
+          fat: Math.round(food.fat || 0),
+          fiber: Math.round(food.fiber || 0),
           isBrazilian: true,
           isHealthy: true
         }))
 
+        if (detectedFoods.length === 0) {
+          throw new Error('Nenhum alimento detectado na foto. Tente uma foto mais clara.')
+        }
+
         setSelectedFoods([...selectedFoods, ...detectedFoods])
+        setIsDialogOpen(true)
 
         toast.success('Foto analisada!', {
           description: `${detectedFoods.length} ${detectedFoods.length === 1 ? 'alimento detectado' : 'alimentos detectados'}. ${data.warning || '⚠️ Estimativas aproximadas, ajuste se necessário.'}`,
           duration: 8000
         })
       } else {
-        throw new Error('Não foi possível processar a resposta')
+        throw new Error('Não foi possível identificar alimentos na foto. Tente uma foto mais clara.')
       }
     } catch (error: any) {
       console.error('Erro ao analisar foto:', error)
       toast.error('Erro ao analisar foto', {
-        description: error.message || 'Tente novamente ou adicione manualmente'
+        description: error.message || 'Tente novamente com uma foto mais clara ou adicione manualmente',
+        duration: 6000
       })
     } finally {
       setIsAnalyzingPhoto(false)
@@ -449,11 +493,15 @@ Formato da resposta (JSON):
   const totalProteinToday = todayMeals.reduce((sum, meal) => sum + meal.totalProtein, 0)
   const totalCarbsToday = todayMeals.reduce((sum, meal) => sum + meal.totalCarbs, 0)
   const totalFatToday = todayMeals.reduce((sum, meal) => sum + meal.totalFat, 0)
+  const totalFiberToday = todayMeals.reduce((sum, meal) => {
+    return sum + meal.foods.reduce((fiberSum, food) => fiberSum + (food.fiber || 0), 0)
+  }, 0)
 
   const targetCalories = user?.targetCalories || 2000
   const targetProtein = user?.targetProtein || 120
   const targetCarbs = user?.targetCarbs || 200
   const targetFat = user?.targetFat || 60
+  const targetFiber = user?.targetFiber || 25
 
   const caloriesPercentage = Math.min((totalCaloriesToday / targetCalories) * 100, 100)
   const proteinPercentage = Math.min((totalProteinToday / targetProtein) * 100, 100)
@@ -494,24 +542,30 @@ Formato da resposta (JSON):
             </div>
 
             {/* Macros */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               <div className="text-center space-y-1">
-                <div className="text-2xl font-bold text-blue-500">{Math.round(totalProteinToday)}g</div>
-                <div className="text-xs text-muted-foreground">Proteína</div>
+                <div className="text-xl font-bold text-blue-500">{Math.round(totalProteinToday)}g</div>
+                <div className="text-[10px] text-muted-foreground">Proteína</div>
                 <Progress value={proteinPercentage} className="h-1" />
-                <div className="text-[10px] text-muted-foreground">{targetProtein}g meta</div>
+                <div className="text-[9px] text-muted-foreground">{targetProtein}g</div>
               </div>
               <div className="text-center space-y-1">
-                <div className="text-2xl font-bold text-orange-500">{Math.round(totalCarbsToday)}g</div>
-                <div className="text-xs text-muted-foreground">Carboidratos</div>
+                <div className="text-xl font-bold text-orange-500">{Math.round(totalCarbsToday)}g</div>
+                <div className="text-[10px] text-muted-foreground">Carboidratos</div>
                 <Progress value={Math.min((totalCarbsToday / targetCarbs) * 100, 100)} className="h-1" />
-                <div className="text-[10px] text-muted-foreground">{targetCarbs}g meta</div>
+                <div className="text-[9px] text-muted-foreground">{targetCarbs}g</div>
               </div>
               <div className="text-center space-y-1">
-                <div className="text-2xl font-bold text-yellow-500">{Math.round(totalFatToday)}g</div>
-                <div className="text-xs text-muted-foreground">Gorduras</div>
+                <div className="text-xl font-bold text-yellow-500">{Math.round(totalFatToday)}g</div>
+                <div className="text-[10px] text-muted-foreground">Gorduras</div>
                 <Progress value={Math.min((totalFatToday / targetFat) * 100, 100)} className="h-1" />
-                <div className="text-[10px] text-muted-foreground">{targetFat}g meta</div>
+                <div className="text-[9px] text-muted-foreground">{targetFat}g</div>
+              </div>
+              <div className="text-center space-y-1">
+                <div className="text-xl font-bold text-green-500">{Math.round(totalFiberToday)}g</div>
+                <div className="text-[10px] text-muted-foreground">Fibras</div>
+                <Progress value={Math.min((totalFiberToday / targetFiber) * 100, 100)} className="h-1" />
+                <div className="text-[9px] text-muted-foreground">{targetFiber}g</div>
               </div>
             </div>
 
@@ -543,7 +597,7 @@ Formato da resposta (JSON):
                 <span className="text-xs">Buscar</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-2xl h-[85vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>Adicionar Alimentos</DialogTitle>
                 <DialogDescription>Busque, favorite ou use seus recentes</DialogDescription>
@@ -835,6 +889,9 @@ Formato da resposta (JSON):
             className="hidden"
           />
         </div>
+
+        {/* Recomendação de Cardápio com IA */}
+        <DietRecommendationDialog />
 
         {/* Melhores Alimentos e Receitas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -9,6 +9,7 @@ import type {
   PrivacySettings,
   MotivationalMessage
 } from '@/types'
+import { calculateBMR, calculateTDEE, calculateCalorieTarget, calculateMacros, calculateWaterTarget } from '@/lib/health-utils'
 
 interface AppContextType {
   // User
@@ -214,7 +215,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [privacySettings])
 
   const setUser = (newUser: UserProfile | null) => {
-    setUserState(newUser)
+    if (newUser) {
+      // Calcular metas automaticamente baseadas no perfil
+      const bmr = calculateBMR(newUser.currentWeight, newUser.height, newUser.age, newUser.gender)
+      const tdee = calculateTDEE(bmr, newUser.activityLevel)
+      const targetCalories = calculateCalorieTarget(tdee, newUser.goal, newUser.medication)
+      const macros = calculateMacros(targetCalories, newUser.goal, newUser.currentWeight)
+      const targetWater = calculateWaterTarget(newUser.currentWeight, newUser.activityLevel)
+
+      // Ajuste especial de fibras para usuários de GLP-1
+      let targetFiber = macros.fiber
+      if (newUser.medication !== 'nenhum') {
+        // GLP-1 aumenta necessidade de fibras (30-35g/dia)
+        targetFiber = Math.max(targetFiber, 30)
+      }
+
+      const updatedUser: UserProfile = {
+        ...newUser,
+        bmr: Math.round(bmr),
+        tdee: Math.round(tdee),
+        targetCalories: Math.round(targetCalories),
+        targetProtein: macros.protein,
+        targetCarbs: macros.carbs,
+        targetFat: macros.fat,
+        targetFiber,
+        targetWater,
+        updatedAt: new Date()
+      }
+
+      setUserState(updatedUser)
+    } else {
+      setUserState(null)
+    }
   }
 
   const completeOnboarding = () => {
