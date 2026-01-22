@@ -1,17 +1,45 @@
-// Nota: O BrowserRouter está definido no main.tsx, então você pode usar Routes e Route diretamente aqui
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Routes, Route } from 'react-router-dom'
+import { useApp } from '@/contexts/AppContext'
+import { MobileNav } from '@/components/mobile-nav'
+import { Onboarding } from '@/pages/Onboarding'
+import { Dashboard } from '@/pages/Dashboard'
+import { WaterTracker } from '@/pages/WaterTracker'
+import { Meals } from '@/pages/Meals'
+import { Fasting } from '@/pages/Fasting'
+import { Workouts } from '@/pages/Workouts'
+import { Progress } from '@/pages/Progress'
+import { Settings } from '@/pages/Settings'
+import { Toaster } from '@/components/ui/sonner'
 
 export function App() {
+  const { isOnboarding } = useApp()
+
+  if (isOnboarding) {
+    return (
+      <>
+        <Onboarding />
+        <Toaster />
+      </>
+    )
+  }
+
   return (
-    <div className="relative min-h-screen">
-      <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle />
+    <>
+      <div className="min-h-screen">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/water" element={<WaterTracker />} />
+          <Route path="/meals" element={<Meals />} />
+          <Route path="/fasting" element={<Fasting />} />
+          <Route path="/workouts" element={<Workouts />} />
+          <Route path="/progress" element={<Progress />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+        <MobileNav />
       </div>
-      <div className="flex items-center justify-center min-h-screen">
-        <h1 className="text-4xl font-bold">lasy</h1>
-      </div>
-    </div>
-  );
+      <Toaster />
+    </>
+  )
 }
 
-export default App;
+export default App

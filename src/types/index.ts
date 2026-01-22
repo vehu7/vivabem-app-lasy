@@ -1,0 +1,157 @@
+export type Gender = 'masculino' | 'feminino' | 'outro' | 'prefiro_nao_informar'
+
+export type Goal = 'perder_peso' | 'ganhar_massa' | 'manter_peso' | 'saude_geral'
+
+export type ActivityLevel = 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'muito_intenso'
+
+export type MedicationType = 'nenhum' | 'ozempic' | 'saxenda' | 'victoza' | 'mounjaro' | 'wegovy' | 'outro_glp1'
+
+export interface UserProfile {
+  id: string
+  name: string
+  email?: string
+  age: number
+  gender: Gender
+  height: number // em cm
+  currentWeight: number // em kg
+  targetWeight: number // em kg
+  goal: Goal
+  activityLevel: ActivityLevel
+  medication: MedicationType
+  medicationDosage?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface IMCData {
+  value: number
+  category: 'abaixo' | 'normal' | 'sobrepeso' | 'obesidade_i' | 'obesidade_ii' | 'obesidade_iii'
+  description: string
+}
+
+export interface MacroNutrients {
+  calories: number
+  protein: number // em gramas
+  carbs: number // em gramas
+  fat: number // em gramas
+  fiber: number // em gramas
+}
+
+export interface WaterIntake {
+  date: string
+  target: number // em ml
+  consumed: number // em ml
+  glasses: number // copos de 200ml
+}
+
+export interface FoodItem {
+  id: string
+  name: string
+  category: 'proteina' | 'carboidrato' | 'gordura' | 'vegetal' | 'fruta' | 'bebida' | 'outro'
+  portion: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+  isBrazilian: boolean
+  isHealthy: boolean
+  barcode?: string
+}
+
+export interface Meal {
+  id: string
+  date: Date
+  type: 'cafe' | 'lanche_manha' | 'almoco' | 'lanche_tarde' | 'jantar' | 'ceia'
+  foods: FoodItem[]
+  totalCalories: number
+  totalProtein: number
+  totalCarbs: number
+  totalFat: number
+  photoUrl?: string
+  notes?: string
+}
+
+export interface FastingSession {
+  id: string
+  startTime: Date
+  endTime?: Date
+  targetDuration: number // em horas
+  actualDuration?: number // em horas
+  completed: boolean
+  type: '16_8' | '18_6' | '20_4' | '24h' | 'personalizado'
+}
+
+export type WorkoutType = 'pilates' | 'yoga' | 'caminhada' | 'corrida' | 'musculacao' | 'danca' | 'natacao' | 'outro'
+
+export interface WorkoutSession {
+  id: string
+  date: Date
+  type: WorkoutType
+  duration: number // em minutos
+  caloriesBurned: number
+  intensity: 'leve' | 'moderado' | 'intenso'
+  notes?: string
+  completed: boolean
+}
+
+export interface WorkoutPlan {
+  id: string
+  name: string
+  type: WorkoutType
+  description: string
+  duration: number
+  difficulty: 'iniciante' | 'intermediario' | 'avancado'
+  exercises: Exercise[]
+  caloriesEstimate: number
+}
+
+export interface Exercise {
+  name: string
+  duration?: number // em minutos
+  repetitions?: number
+  sets?: number
+  description: string
+  videoUrl?: string
+}
+
+export interface WeightEntry {
+  id: string
+  date: Date
+  weight: number
+  notes?: string
+}
+
+export interface ProgressStats {
+  weightLost: number
+  daysActive: number
+  workoutsCompleted: number
+  averageCalories: number
+  waterGoalsMet: number
+  fastingSessionsCompleted: number
+}
+
+export interface MotivationalMessage {
+  id: string
+  message: string
+  type: 'encouragement' | 'tip' | 'reminder' | 'celebration'
+  icon: string
+}
+
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  type: 'water' | 'meal' | 'workout' | 'weigh_in' | 'motivation'
+  time: Date
+  read: boolean
+}
+
+export interface PrivacySettings {
+  dataSharing: boolean
+  analytics: boolean
+  notifications: boolean
+  reminders: boolean
+  acceptedTerms: boolean
+  acceptedPrivacyPolicy: boolean
+}
