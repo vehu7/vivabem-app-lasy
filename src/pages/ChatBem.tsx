@@ -120,22 +120,52 @@ BEM:`
               topK: 40,
               topP: 0.95,
               maxOutputTokens: 500,
-            }
+            },
+            safetySettings: [
+              {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_NONE"
+              },
+              {
+                category: "HARM_CATEGORY_HATE_SPEECH",
+                threshold: "BLOCK_NONE"
+              },
+              {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_NONE"
+              },
+              {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_NONE"
+              }
+            ]
           })
         }
       )
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error?.message || 'Erro ao conectar com a API do Gemini')
+        const errorText = await response.text()
+        console.error('Erro da API Gemini:', errorText)
+
+        let errorMessage = 'Erro ao conectar com a API do Gemini'
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.error?.message || errorMessage
+        } catch (e) {
+          errorMessage = errorText.substring(0, 200)
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log('Resposta Gemini:', data)
 
       // Extrair texto da resposta do Gemini
       const geminiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
       if (!geminiResponse) {
-        throw new Error('Resposta vazia do Gemini')
+        console.error('Estrutura da resposta:', JSON.stringify(data, null, 2))
+        throw new Error('Resposta vazia do Gemini. Verifique o console para mais detalhes.')
       }
 
       const assistantMessage: Message = {
@@ -147,16 +177,29 @@ BEM:`
 
       setMessages(prev => [...prev, assistantMessage])
     } catch (error: any) {
-      console.error('Erro no chat:', error)
+      console.error('Erro completo no chat:', error)
+
+      // Extrair mensagem de erro mais descritiva
+      let errorDescription = error.message
+
+      if (error.message.includes('API_KEY_INVALID')) {
+        errorDescription = 'Chave API inválida. Verifique se você copiou corretamente a chave do Google AI Studio.'
+      } else if (error.message.includes('quota')) {
+        errorDescription = 'Limite de requisições excedido. Aguarde alguns minutos.'
+      } else if (error.message.includes('CORS')) {
+        errorDescription = 'Erro de conexão. A API do Gemini pode estar bloqueando requisições diretas do navegador.'
+      }
+
       toast.error('Erro ao enviar mensagem', {
-        description: error.message
+        description: errorDescription,
+        duration: 5000
       })
 
-      // Adicionar mensagem de erro amigável
+      // Adicionar mensagem de erro detalhada
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '😔 Desculpe, tive um problema para responder. Por favor, tente novamente ou verifique se a chave do Google Gemini está configurada corretamente.',
+        content: `😔 Desculpe, tive um problema para responder.\n\nErro: ${errorDescription}\n\nDica: Abra o console do navegador (F12) para ver mais detalhes.`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
