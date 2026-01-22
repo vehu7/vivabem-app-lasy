@@ -26,10 +26,18 @@ export function Dashboard() {
   if (!user) return null
 
   const imc = calculateIMC(user.currentWeight, user.height)
-  const bmr = calculateBMR(user.currentWeight, user.height, user.age, user.gender)
-  const tdee = calculateTDEE(bmr, user.activityLevel)
-  const calorieTarget = calculateCalorieTarget(tdee, user.goal, user.medication)
-  const macros = calculateMacros(calorieTarget, user.goal, user.currentWeight)
+
+  // Usar valores pré-calculados se disponíveis, senão calcular
+  const bmr = user.bmr ?? calculateBMR(user.currentWeight, user.height, user.age, user.gender)
+  const tdee = user.tdee ?? calculateTDEE(bmr, user.activityLevel)
+  const calorieTarget = user.targetCalories ?? calculateCalorieTarget(tdee, user.goal, user.medication)
+  const macros = user.targetProtein ? {
+    calories: user.targetCalories!,
+    protein: user.targetProtein,
+    carbs: user.targetCarbs!,
+    fat: user.targetFat!,
+    fiber: user.targetFiber!
+  } : calculateMacros(calorieTarget, user.goal, user.currentWeight)
 
   const totalCaloriesToday = todayMeals.reduce((sum, meal) => sum + meal.totalCalories, 0)
   const caloriesRemaining = calorieTarget - totalCaloriesToday

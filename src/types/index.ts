@@ -6,6 +6,25 @@ export type ActivityLevel = 'sedentario' | 'leve' | 'moderado' | 'intenso' | 'mu
 
 export type MedicationType = 'nenhum' | 'ozempic' | 'saxenda' | 'victoza' | 'mounjaro' | 'wegovy' | 'outro_glp1'
 
+export type DietaryPreference = 'nenhuma' | 'vegetariano' | 'vegano' | 'sem_lactose' | 'sem_gluten' | 'low_carb' | 'diabetes'
+
+export type FastingExperience = 'nunca' | 'iniciante' | 'intermediario' | 'avancado'
+
+export type SleepQuality = 'ruim' | 'regular' | 'bom' | 'excelente'
+
+export interface MealRoutine {
+  mealsPerDay: number
+  breakfastTime?: string
+  lunchTime?: string
+  dinnerTime?: string
+  hasSnacks: boolean
+}
+
+export interface MedicalLimitation {
+  hasLimitation: boolean
+  description?: string
+}
+
 export interface UserProfile {
   id: string
   name: string
@@ -15,10 +34,42 @@ export interface UserProfile {
   height: number // em cm
   currentWeight: number // em kg
   targetWeight: number // em kg
+  bodyFatPercentage?: number // % de gordura corporal (opcional)
   goal: Goal
   activityLevel: ActivityLevel
+
+  // Preferências alimentares
+  dietaryPreferences: DietaryPreference[]
+
+  // Rotina
+  mealRoutine: MealRoutine
+  averageSleepHours: number
+  sleepQuality: SleepQuality
+
+  // Jejum
+  fastingExperience: FastingExperience
+  interestedInFasting: boolean
+
+  // Medicação e saúde
   medication: MedicationType
   medicationDosage?: string
+  medicalLimitations: MedicalLimitation
+
+  // LGPD
+  consentTerms: boolean
+  consentPrivacyPolicy: boolean
+  consentDataProcessing: boolean
+
+  // Metas calculadas
+  tdee?: number
+  bmr?: number
+  targetCalories?: number
+  targetProtein?: number
+  targetCarbs?: number
+  targetFat?: number
+  targetFiber?: number
+  targetWater?: number
+
   createdAt: Date
   updatedAt: Date
 }

@@ -1,7 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { useApp } from '@/contexts/AppContext'
 import { MobileNav } from '@/components/mobile-nav'
-import { Onboarding } from '@/pages/Onboarding'
+import { OnboardingNew } from '@/pages/OnboardingNew'
+import { PlanSummary } from '@/pages/PlanSummary'
 import { Dashboard } from '@/pages/Dashboard'
 import { WaterTracker } from '@/pages/WaterTracker'
 import { Meals } from '@/pages/Meals'
@@ -17,7 +18,7 @@ export function App() {
   if (isOnboarding) {
     return (
       <>
-        <Onboarding />
+        <OnboardingNew />
         <Toaster />
       </>
     )
@@ -28,6 +29,7 @@ export function App() {
       <div className="min-h-screen">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/plan-summary" element={<PlanSummary />} />
           <Route path="/water" element={<WaterTracker />} />
           <Route path="/meals" element={<Meals />} />
           <Route path="/fasting" element={<Fasting />} />
