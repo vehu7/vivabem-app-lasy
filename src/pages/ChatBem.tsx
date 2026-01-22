@@ -8,6 +8,7 @@ import { Mascot } from '@/components/mascot'
 import { Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { getFallbackResponse } from '@/lib/chat-fallback'
 
 interface Message {
   id: string
@@ -154,30 +155,43 @@ BEM:`
     } catch (error: any) {
       console.error('Erro completo no chat:', error)
 
-      // Extrair mensagem de erro mais descritiva
-      let errorDescription = error.message
+      // Usar sistema de fallback com respostas inteligentes offline
+      console.log('🤖 Usando sistema de respostas offline (fallback)')
 
-      if (error.message.includes('API_KEY_INVALID')) {
-        errorDescription = 'Chave API inválida. Verifique se você copiou corretamente a chave do Google AI Studio.'
-      } else if (error.message.includes('quota')) {
-        errorDescription = 'Limite de requisições excedido. Aguarde alguns minutos.'
-      } else if (error.message.includes('CORS')) {
-        errorDescription = 'Erro de conexão. A API do Gemini pode estar bloqueando requisições diretas do navegador.'
+      try {
+        const fallbackResponse = getFallbackResponse(userMessage.content, user)
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: fallbackResponse,
+          timestamp: new Date()
+        }
+
+        setMessages(prev => [...prev, assistantMessage])
+
+        // Notificar usuário que está em modo offline (apenas uma vez)
+        toast.info('Modo Offline', {
+          description: 'A API do Gemini está indisponível. Usando respostas inteligentes offline!',
+          duration: 3000
+        })
+      } catch (fallbackError) {
+        console.error('Erro no fallback:', fallbackError)
+
+        // Se até o fallback falhar, mostrar erro
+        toast.error('Erro ao enviar mensagem', {
+          description: 'Não foi possível processar sua mensagem.',
+          duration: 5000
+        })
+
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `😔 Desculpe, tive um problema técnico. Por favor, tente novamente.`,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, errorMessage])
       }
-
-      toast.error('Erro ao enviar mensagem', {
-        description: errorDescription,
-        duration: 5000
-      })
-
-      // Adicionar mensagem de erro detalhada
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `😔 Desculpe, tive um problema para responder.\n\nErro: ${errorDescription}\n\nDica: Abra o console do navegador (F12) para ver mais detalhes.`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
