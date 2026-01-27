@@ -1,28 +1,42 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles, Loader2, Clock, Users, DollarSign } from 'lucide-react'
+import { Sparkles, Loader2, Clock } from 'lucide-react'
 import { useApp } from '@/contexts/AppContext'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { toast } from 'sonner'
 
-interface DietRecommendation {
-  title: string
-  description: string
-  meals: {
-    type: string
-    time: string
-    foods: string[]
+interface DayMeal {
+  type: string
+  time: string
+  foods: string[]
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+}
+
+interface WeekDay {
+  day: string
+  dayOfWeek: string
+  meals: DayMeal[]
+  totalNutrition: {
     calories: number
     protein: number
     carbs: number
     fat: number
     fiber: number
-  }[]
-  totalNutrition: {
+  }
+}
+
+interface DietRecommendation {
+  title: string
+  description: string
+  weekDays: WeekDay[]
+  weeklyAverage: {
     calories: number
     protein: number
     carbs: number
@@ -52,7 +66,7 @@ export function DietRecommendationDialog() {
       const genAI = new GoogleGenerativeAI(apiKey)
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
-      const prompt = `Como nutricionista especialista, crie um cardápio/dieta personalizada para 1 dia baseado neste perfil:
+      const prompt = `Como nutricionista especialista, crie um cardápio SEMANAL COMPLETO (7 dias) personalizado baseado neste perfil:
 
 **Perfil do Paciente:**
 - Objetivo: ${user.goal === 'perder_peso' ? 'Perder peso' : user.goal === 'ganhar_massa' ? 'Ganhar massa muscular' : 'Manter peso e saúde'}
@@ -72,44 +86,61 @@ ${user.dietaryPreferences?.length > 0 ? `- Restrições: ${user.dietaryPreferenc
 - Fibras: ${user.targetFiber}g
 
 **Instruções Importantes:**
-1. Use APENAS alimentos brasileiros comuns e acessíveis
-2. Priorize alimentos integrais, naturais e regionais
-3. ${user.medication !== 'nenhum' ? 'IMPORTANTE: Com medicação GLP-1, reforçar proteínas e fibras, refeições menores e mais nutritivas' : ''}
-4. Respeite as restrições alimentares: ${user.dietaryPreferences?.join(', ') || 'Nenhuma'}
-5. Inclua horários aproximados de refeições
-6. Mantenha o cardápio prático e econômico
+1. Crie um cardápio COMPLETO para 7 dias (Segunda a Domingo)
+2. Use APENAS alimentos brasileiros comuns e acessíveis
+3. Varie as refeições entre os dias (não repita o mesmo cardápio)
+4. Priorize alimentos integrais, naturais e regionais
+5. ${user.medication !== 'nenhum' ? 'IMPORTANTE: Com medicação GLP-1, reforçar proteínas e fibras, refeições menores e mais nutritivas' : ''}
+6. Respeite as restrições alimentares: ${user.dietaryPreferences?.join(', ') || 'Nenhuma'}
+7. Inclua 6 refeições por dia: Café, Lanche Manhã, Almoço, Lanche Tarde, Jantar, Ceia
+8. Mantenha o cardápio prático e econômico
 
 Retorne no formato JSON:
 {
-  "title": "Cardápio Personalizado - [Objetivo]",
-  "description": "Descrição breve do cardápio (1-2 frases)",
-  "meals": [
+  "title": "Cardápio Semanal - [Objetivo]",
+  "description": "Descrição breve do plano semanal (1-2 frases)",
+  "weekDays": [
     {
-      "type": "Café da Manhã",
-      "time": "07:00",
-      "foods": ["Alimento 1", "Alimento 2", "Alimento 3"],
-      "calories": número,
-      "protein": número,
-      "carbs": número,
-      "fat": número,
-      "fiber": número
+      "day": "Segunda-feira",
+      "dayOfWeek": "Dia 1",
+      "meals": [
+        {
+          "type": "Café da Manhã",
+          "time": "07:00",
+          "foods": ["Alimento 1", "Alimento 2", "Alimento 3"],
+          "calories": número,
+          "protein": número,
+          "carbs": número,
+          "fat": número,
+          "fiber": número
+        }
+      ],
+      "totalNutrition": {
+        "calories": total_do_dia,
+        "protein": total_do_dia,
+        "carbs": total_do_dia,
+        "fat": total_do_dia,
+        "fiber": total_do_dia
+      }
     }
   ],
-  "totalNutrition": {
-    "calories": total,
-    "protein": total,
-    "carbs": total,
-    "fat": total,
-    "fiber": total
+  "weeklyAverage": {
+    "calories": média_semanal,
+    "protein": média_semanal,
+    "carbs": média_semanal,
+    "fat": média_semanal,
+    "fiber": média_semanal
   },
   "tips": [
     "Dica 1",
     "Dica 2",
-    "Dica 3"
+    "Dica 3",
+    "Dica 4"
   ],
   "shoppingList": [
     "Item 1",
-    "Item 2"
+    "Item 2",
+    "..."
   ]
 }`
 
@@ -154,14 +185,14 @@ Retorne no formato JSON:
           Cardápio Personalizado
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col p-6">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Seu Cardápio Personalizado
+            Seu Cardápio Semanal Personalizado
           </DialogTitle>
           <DialogDescription>
-            Recomendação baseada no seu perfil, objetivos e preferências
+            Plano completo de 7 dias baseado no seu perfil, objetivos e preferências
           </DialogDescription>
         </DialogHeader>
 
@@ -169,10 +200,10 @@ Retorne no formato JSON:
           <div className="flex-1 flex flex-col items-center justify-center space-y-6 p-6 overflow-auto">
             <Sparkles className="w-16 h-16 text-primary opacity-50" />
             <div className="text-center space-y-2">
-              <h3 className="text-xl font-semibold">Gerar Cardápio com IA</h3>
+              <h3 className="text-xl font-semibold">Gerar Cardápio Semanal com IA</h3>
               <p className="text-sm text-muted-foreground max-w-md">
-                Vamos criar um cardápio completo para 1 dia baseado no seu perfil,
-                objetivos e metas nutricionais. Com alimentos brasileiros acessíveis!
+                Vamos criar um cardápio completo para 7 dias (semana inteira) baseado no seu perfil,
+                objetivos e metas nutricionais. Com alimentos brasileiros acessíveis e variados!
               </p>
             </div>
 
@@ -214,38 +245,38 @@ Retorne no formato JSON:
 
         {recommendation && !isGenerating && (
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
+            <div className="flex-1 overflow-auto pr-2 min-h-0">
               <div className="space-y-6">
                 {/* Header do cardápio */}
                 <div>
                   <h2 className="text-2xl font-bold mb-2">{recommendation.title}</h2>
                   <p className="text-muted-foreground mb-4">{recommendation.description}</p>
 
-                  {/* Resumo nutricional */}
+                  {/* Média nutricional semanal */}
                   <Card className="bg-primary/5 border-primary/20">
                     <CardHeader>
-                      <CardTitle className="text-base">Resumo Nutricional do Dia</CardTitle>
+                      <CardTitle className="text-base">Média Nutricional Diária (Semana)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-5 gap-4 text-center">
                         <div>
-                          <div className="text-2xl font-bold">{recommendation.totalNutrition.calories}</div>
+                          <div className="text-2xl font-bold">{recommendation.weeklyAverage.calories}</div>
                           <div className="text-xs text-muted-foreground">Calorias</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-blue-500">{recommendation.totalNutrition.protein}g</div>
+                          <div className="text-2xl font-bold text-blue-500">{recommendation.weeklyAverage.protein}g</div>
                           <div className="text-xs text-muted-foreground">Proteína</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-orange-500">{recommendation.totalNutrition.carbs}g</div>
+                          <div className="text-2xl font-bold text-orange-500">{recommendation.weeklyAverage.carbs}g</div>
                           <div className="text-xs text-muted-foreground">Carboidratos</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-yellow-500">{recommendation.totalNutrition.fat}g</div>
+                          <div className="text-2xl font-bold text-yellow-500">{recommendation.weeklyAverage.fat}g</div>
                           <div className="text-xs text-muted-foreground">Gorduras</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-green-500">{recommendation.totalNutrition.fiber}g</div>
+                          <div className="text-2xl font-bold text-green-500">{recommendation.weeklyAverage.fiber}g</div>
                           <div className="text-xs text-muted-foreground">Fibras</div>
                         </div>
                       </div>
@@ -253,35 +284,59 @@ Retorne no formato JSON:
                   </Card>
                 </div>
 
-                {/* Refeições */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Refeições do Dia</h3>
-                  {recommendation.meals.map((meal, index) => (
-                    <Card key={index}>
-                      <CardHeader>
+                {/* Cardápio de cada dia da semana */}
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold">Cardápio Semanal</h3>
+                  {recommendation.weekDays.map((day, dayIndex) => (
+                    <Card key={dayIndex} className="border-primary/30">
+                      <CardHeader className="bg-accent/50">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">{meal.type}</CardTitle>
-                          <Badge variant="outline">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {meal.time}
+                          <div>
+                            <CardTitle className="text-lg">{day.day}</CardTitle>
+                            <CardDescription>{day.dayOfWeek}</CardDescription>
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {day.totalNutrition.calories} kcal
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-3">
-                        <ul className="space-y-1">
-                          {meal.foods.map((food, foodIndex) => (
-                            <li key={foodIndex} className="text-sm flex items-start gap-2">
-                              <span className="text-primary">•</span>
-                              <span>{food}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="flex flex-wrap gap-2 text-xs pt-2 border-t">
-                          <span className="font-medium">{meal.calories} kcal</span>
-                          <span className="text-blue-500">P: {meal.protein}g</span>
-                          <span className="text-orange-500">C: {meal.carbs}g</span>
-                          <span className="text-yellow-500">G: {meal.fat}g</span>
-                          <span className="text-green-500">F: {meal.fiber}g</span>
+                      <CardContent className="pt-4 space-y-3">
+                        {day.meals.map((meal, mealIndex) => (
+                          <div key={mealIndex} className="border-l-2 border-primary/30 pl-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-semibold text-sm">{meal.type}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {meal.time}
+                              </Badge>
+                            </div>
+                            <ul className="space-y-0.5 mb-2">
+                              {meal.foods.map((food, foodIndex) => (
+                                <li key={foodIndex} className="text-xs flex items-start gap-1.5">
+                                  <span className="text-primary text-[10px] mt-0.5">•</span>
+                                  <span className="text-muted-foreground">{food}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <div className="flex flex-wrap gap-1.5 text-[10px]">
+                              <span className="font-medium">{meal.calories} kcal</span>
+                              <span className="text-blue-500">P:{meal.protein}g</span>
+                              <span className="text-orange-500">C:{meal.carbs}g</span>
+                              <span className="text-yellow-500">G:{meal.fat}g</span>
+                              <span className="text-green-500">F:{meal.fiber}g</span>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Total do dia */}
+                        <div className="pt-2 border-t flex justify-between items-center text-xs">
+                          <span className="font-medium">Total do dia:</span>
+                          <div className="flex gap-2">
+                            <span className="text-blue-500">P:{day.totalNutrition.protein}g</span>
+                            <span className="text-orange-500">C:{day.totalNutrition.carbs}g</span>
+                            <span className="text-yellow-500">G:{day.totalNutrition.fat}g</span>
+                            <span className="text-green-500">F:{day.totalNutrition.fiber}g</span>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -311,11 +366,11 @@ Retorne no formato JSON:
                 {/* Lista de compras */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Lista de Compras</CardTitle>
-                    <CardDescription>Ingredientes necessários para este cardápio</CardDescription>
+                    <CardTitle className="text-base">Lista de Compras Semanal</CardTitle>
+                    <CardDescription>Todos os ingredientes necessários para a semana</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {recommendation.shoppingList.map((item, index) => (
                         <div key={index} className="text-sm flex items-center gap-2">
                           <span className="text-primary">□</span>
@@ -326,13 +381,13 @@ Retorne no formato JSON:
                   </CardContent>
                 </Card>
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Botões de ação */}
-            <div className="pt-4 border-t space-y-2 flex-shrink-0">
+            <div className="pt-4 mt-4 border-t space-y-2 flex-shrink-0">
               <Button onClick={generateDietRecommendation} variant="outline" className="w-full" disabled={isGenerating}>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Gerar Novo Cardápio
+                Gerar Novo Cardápio Semanal
               </Button>
             </div>
           </div>

@@ -39,8 +39,8 @@ export function RecipesDialog() {
           Receitas
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-6xl max-h-[85vh] overflow-hidden flex flex-col p-6">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
             Receitas Saudáveis
@@ -61,7 +61,7 @@ export function RecipesDialog() {
             />
 
             {/* Lista de receitas */}
-            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
+            <div className="flex-1 overflow-auto pr-2 min-h-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredRecipes.map((recipe) => (
                   <Card
@@ -115,11 +115,11 @@ export function RecipesDialog() {
                   </Card>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         ) : (
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
+            <div className="flex-1 overflow-auto pr-2 min-h-0">
               <div className="space-y-6">
                 {/* Header da receita */}
                 <div>
@@ -240,10 +240,10 @@ export function RecipesDialog() {
                   </Card>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Botão voltar */}
-            <div className="pt-4 border-t flex-shrink-0">
+            <div className="pt-4 mt-4 border-t flex-shrink-0">
               <Button onClick={() => setSelectedRecipe(null)} variant="outline" className="w-full">
                 ← Voltar para receitas
               </Button>

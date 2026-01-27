@@ -29,8 +29,8 @@ export function BestFoodsDialog() {
           Melhores Alimentos
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col p-6">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Award className="w-5 h-5 text-primary" />
             Melhores Alimentos Brasileiros
@@ -41,13 +41,13 @@ export function BestFoodsDialog() {
         </DialogHeader>
 
         <Tabs defaultValue="foods" className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+          <TabsList className="grid w-full grid-cols-2 flex-shrink-0 mb-4">
             <TabsTrigger value="foods">Alimentos</TabsTrigger>
             <TabsTrigger value="tips">Dicas de Compra</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="foods" className="flex-1 overflow-hidden mt-4 min-h-0">
-            <ScrollArea className="h-full w-full pr-4">
+          <TabsContent value="foods" className="flex-1 overflow-auto mt-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+            <div className="flex-1 overflow-auto pr-2">
               <div className="space-y-6">
                 {BEST_BRAZILIAN_FOODS.map((category) => (
                   <Card key={category.category}>
@@ -80,11 +80,11 @@ export function BestFoodsDialog() {
                   </Card>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
-          <TabsContent value="tips" className="flex-1 overflow-hidden mt-4 min-h-0">
-            <ScrollArea className="h-full w-full pr-4">
+          <TabsContent value="tips" className="flex-1 overflow-auto mt-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
+            <div className="flex-1 overflow-auto pr-2">
               <div className="space-y-3">
                 <Card className="bg-primary/5 border-primary/20">
                   <CardContent className="pt-4">
@@ -119,7 +119,7 @@ export function BestFoodsDialog() {
                   </CardHeader>
                 </Card>
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

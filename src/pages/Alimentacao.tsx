@@ -898,7 +898,7 @@ Formato da resposta (JSON):
           />
         </div>
 
-        {/* Recomendação de Cardápio com IA */}
+        {/* Recomendação de Cardápio Semanal com IA */}
         <DietRecommendationDialog />
 
         {/* Melhores Alimentos e Receitas */}
