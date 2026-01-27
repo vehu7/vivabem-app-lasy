@@ -13,7 +13,7 @@ import { Camera, Search, Barcode, Star, Clock, Apple, Coffee, UtensilsCrossed, C
 import type { Meal, FoodItem } from '@/types'
 import { BRAZILIAN_FOODS } from '@/data/brazilian-foods'
 import { toast } from 'sonner'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { Html5Qrcode } from 'html5-qrcode'
 import { BestFoodsDialog } from '@/components/best-foods-dialog'
 import { RecipesDialog } from '@/components/recipes-dialog'
@@ -129,11 +129,13 @@ export function Alimentacao() {
     if (!user) return
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
       if (!apiKey) return
 
-      const genAI = new GoogleGenerativeAI(apiKey)
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" })
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+      })
 
       const prompt = `Como nutricionista do app VivaBem, dê um feedback MUITO BREVE (máximo 2 linhas) sobre esta refeição:
 
@@ -152,8 +154,23 @@ Perfil do usuário:
 
 Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equilíbrio de macros, fibras, hidratação ou saciedade.`
 
-      const result = await model.generateContent(prompt)
-      const feedback = result.response.text()
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um nutricionista especializado em alimentação saudável brasileira.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 150
+      })
+
+      const feedback = completion.choices[0]?.message?.content || 'Refeição registrada com sucesso!'
 
       toast.success('Refeição registrada!', {
         description: feedback,
@@ -195,10 +212,12 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
       }
 
       // Se não encontrou, tentar usar IA para sugerir
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
       if (apiKey) {
-        const genAI = new GoogleGenerativeAI(apiKey)
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" })
+        const openai = new OpenAI({
+          apiKey: apiKey,
+          dangerouslyAllowBrowser: true
+        })
 
         const prompt = `O código de barras ${barcode} não foi encontrado no banco de dados brasileiro.
 
@@ -216,12 +235,26 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
           "confidence": "baixa"
         }`
 
-        const result = await model.generateContent(prompt)
-        const response = result.response.text()
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'Você é um especialista em alimentos brasileiros e nutrição. Retorne sempre JSON válido.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 200,
+          response_format: { type: 'json_object' }
+        })
 
-        const jsonMatch = response.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          const data = JSON.parse(jsonMatch[0])
+        const response = completion.choices[0]?.message?.content
+        if (response) {
+          const data = JSON.parse(response)
           return {
             id: `barcode-ai-${barcode}`,
             name: `${data.name} (sugestão IA)`,
@@ -348,9 +381,9 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
     setIsAnalyzingPhoto(true)
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
       if (!apiKey) {
-        throw new Error('ERRO: Variável de ambiente VITE_GEMINI_API_KEY não está definida. Configure o arquivo .env com sua chave da API Gemini.')
+        throw new Error('ERRO: Variável de ambiente VITE_OPENAI_API_KEY não está definida. Configure o arquivo .env com sua chave da OpenAI.')
       }
 
       // Validar tamanho do arquivo (máx 4MB)
@@ -372,14 +405,15 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
 
       reader.readAsDataURL(file)
       const dataUrl = await base64Promise
-      const base64Image = dataUrl.split(',')[1]
 
-      if (!base64Image) {
+      if (!dataUrl) {
         throw new Error('Erro ao processar imagem')
       }
 
-      const genAI = new GoogleGenerativeAI(apiKey)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+      })
 
       const prompt = `Analise esta foto de comida e identifique todos os alimentos visíveis. Para cada alimento:
 
@@ -410,27 +444,41 @@ Formato da resposta (JSON):
   "warning": "Aviso sobre precisão"
 }`
 
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: file.type
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um nutricionista especializado em alimentos brasileiros. Retorne sempre JSON válido.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: dataUrl
+                }
+              }
+            ]
           }
-        }
-      ])
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' }
+      })
 
-      const response = result.response.text()
+      const response = completion.choices[0]?.message?.content
 
-      // Tentar extrair JSON da resposta (mais robusto)
-      let jsonMatch = response.match(/```json\s*(\{[\s\S]*?\})\s*```/)
-      if (!jsonMatch) {
-        jsonMatch = response.match(/\{[\s\S]*\}/)
+      if (!response) {
+        throw new Error('Resposta vazia da OpenAI')
       }
 
-      if (jsonMatch) {
-        const jsonText = jsonMatch[1] || jsonMatch[0]
-        const data = JSON.parse(jsonText)
+      const data = JSON.parse(response)
 
         if (!data.foods || !Array.isArray(data.foods)) {
           throw new Error('Resposta da IA em formato inválido')

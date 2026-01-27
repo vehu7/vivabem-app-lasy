@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Mascot } from '@/components/mascot'
 import { Send, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { getFallbackResponse } from '@/lib/chat-fallback'
 
 interface Message {
@@ -53,9 +53,9 @@ export function ChatBem() {
 
     try {
       // Verificar se a API key está configurada
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
       if (!apiKey) {
-        throw new Error('ERRO: Variável de ambiente VITE_GEMINI_API_KEY não está definida. Configure o arquivo .env com sua chave do Google Gemini.')
+        throw new Error('ERRO: Variável de ambiente VITE_OPENAI_API_KEY não está definida. Configure o arquivo .env com sua chave da OpenAI.')
       }
 
       // Criar contexto do usuário
@@ -89,65 +89,46 @@ ${userContext}
 
 Responda de forma amigável e útil!`
 
-      // Construir histórico de conversas para contexto
-      const conversationHistory = messages.slice(-5).map(m =>
-        `${m.role === 'user' ? 'Usuário' : 'BEM'}: ${m.content}`
-      ).join('\n\n')
-
-      const fullPrompt = `${systemPrompt}
-
-Histórico da conversa:
-${conversationHistory}
-
-Usuário: ${userMessage.content}
-
-BEM:`
-
-      // Inicializar Google Generative AI com SDK oficial
-      const genAI = new GoogleGenerativeAI(apiKey)
-
-      // Usar o modelo gemini-pro (mais estável)
-      const model = genAI.getGenerativeModel({
-        model: "gemini-pro",
-        generationConfig: {
-          temperature: 0.8,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 500,
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE"
-          }
-        ]
+      // Inicializar OpenAI
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
       })
 
-      // Gerar conteúdo
-      const result = await model.generateContent(fullPrompt)
-      const response = await result.response
-      const geminiResponse = response.text()
+      // Construir mensagens do histórico
+      const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        ...messages.slice(-5).map(m => ({
+          role: m.role === 'user' ? 'user' as const : 'assistant' as const,
+          content: m.content
+        })),
+        {
+          role: 'user',
+          content: userMessage.content
+        }
+      ]
 
-      if (!geminiResponse) {
-        throw new Error('Resposta vazia do Gemini')
+      // Gerar resposta com OpenAI
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: openaiMessages,
+        temperature: 0.8,
+        max_tokens: 500
+      })
+
+      const openaiResponse = completion.choices[0]?.message?.content
+
+      if (!openaiResponse) {
+        throw new Error('Resposta vazia da OpenAI')
       }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: geminiResponse,
+        content: openaiResponse,
         timestamp: new Date()
       }
 
@@ -172,7 +153,7 @@ BEM:`
 
         // Notificar usuário que está em modo offline (apenas uma vez)
         toast.info('Modo Offline', {
-          description: 'A API do Gemini está indisponível. Usando respostas inteligentes offline!',
+          description: 'A API da OpenAI está indisponível. Usando respostas inteligentes offline!',
           duration: 3000
         })
       } catch (fallbackError) {

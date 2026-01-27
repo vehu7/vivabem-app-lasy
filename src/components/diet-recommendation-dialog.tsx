@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Sparkles, Loader2, Clock } from 'lucide-react'
 import { useApp } from '@/contexts/AppContext'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { toast } from 'sonner'
 
 interface DayMeal {
@@ -58,13 +58,15 @@ export function DietRecommendationDialog() {
     setIsGenerating(true)
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY
       if (!apiKey) {
-        throw new Error('Chave da API Gemini não configurada')
+        throw new Error('Chave da API OpenAI não configurada')
       }
 
-      const genAI = new GoogleGenerativeAI(apiKey)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+      const openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true
+      })
 
       const prompt = `Como nutricionista especialista, crie um cardápio SEMANAL COMPLETO (7 dias) personalizado baseado neste perfil:
 
@@ -144,25 +146,34 @@ Retorne no formato JSON:
   ]
 }`
 
-      const result = await model.generateContent(prompt)
-      const response = result.response.text()
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um nutricionista especializado em planejamento de cardápios com alimentos brasileiros. Retorne sempre JSON válido.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' }
+      })
 
-      // Extrair JSON da resposta
-      let jsonMatch = response.match(/```json\s*(\{[\s\S]*?\})\s*```/)
-      if (!jsonMatch) {
-        jsonMatch = response.match(/\{[\s\S]*\}/)
-      }
+      const response = completion.choices[0]?.message?.content
 
-      if (jsonMatch) {
-        const jsonText = jsonMatch[1] || jsonMatch[0]
-        const data: DietRecommendation = JSON.parse(jsonText)
-        setRecommendation(data)
-        toast.success('Cardápio personalizado gerado!', {
-          description: 'Baseado no seu perfil e metas nutricionais'
-        })
-      } else {
+      if (!response) {
         throw new Error('Não foi possível gerar o cardápio')
       }
+
+      const data: DietRecommendation = JSON.parse(response)
+      setRecommendation(data)
+      toast.success('Cardápio semanal gerado!', {
+        description: 'Plano completo de 7 dias baseado no seu perfil'
+      })
     } catch (error: any) {
       console.error('Erro ao gerar cardápio:', error)
       toast.error('Erro ao gerar cardápio', {

@@ -184,7 +184,16 @@ export class ErrorBoundary extends Component<Props, State> {
       };
     }
     
-    // Google (Gemini, etc)
+    // OpenAI
+    if (varLower.includes('openai')) {
+      return {
+        name: 'OpenAI',
+        url: 'https://platform.openai.com/api-keys',
+        description: 'Crie sua chave API no painel da OpenAI'
+      };
+    }
+
+    // Google (Gemini, etc) - legado
     if (varLower.includes('google') || varLower.includes('gemini')) {
       return {
         name: 'Google AI',
