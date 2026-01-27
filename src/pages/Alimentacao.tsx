@@ -480,39 +480,36 @@ Formato da resposta (JSON):
 
       const data = JSON.parse(response)
 
-        if (!data.foods || !Array.isArray(data.foods)) {
-          throw new Error('Resposta da IA em formato inválido')
-        }
-
-        // Converter para FoodItem[]
-        const detectedFoods: FoodItem[] = data.foods.map((food: any, index: number) => ({
-          id: `photo-${Date.now()}-${index}`,
-          name: food.name || 'Alimento desconhecido',
-          category: 'outro' as const,
-          portion: food.portion || '100g',
-          calories: Math.round(food.calories || 0),
-          protein: Math.round(food.protein || 0),
-          carbs: Math.round(food.carbs || 0),
-          fat: Math.round(food.fat || 0),
-          fiber: Math.round(food.fiber || 0),
-          isBrazilian: true,
-          isHealthy: true
-        }))
-
-        if (detectedFoods.length === 0) {
-          throw new Error('Nenhum alimento detectado na foto. Tente uma foto mais clara.')
-        }
-
-        setSelectedFoods([...selectedFoods, ...detectedFoods])
-        setIsDialogOpen(true)
-
-        toast.success('Foto analisada!', {
-          description: `${detectedFoods.length} ${detectedFoods.length === 1 ? 'alimento detectado' : 'alimentos detectados'}. ${data.warning || '⚠️ Estimativas aproximadas, ajuste se necessário.'}`,
-          duration: 8000
-        })
-      } else {
-        throw new Error('Não foi possível identificar alimentos na foto. Tente uma foto mais clara.')
+      if (!data.foods || !Array.isArray(data.foods)) {
+        throw new Error('Resposta da IA em formato inválido')
       }
+
+      // Converter para FoodItem[]
+      const detectedFoods: FoodItem[] = data.foods.map((food: any, index: number) => ({
+        id: `photo-${Date.now()}-${index}`,
+        name: food.name || 'Alimento desconhecido',
+        category: 'outro' as const,
+        portion: food.portion || '100g',
+        calories: Math.round(food.calories || 0),
+        protein: Math.round(food.protein || 0),
+        carbs: Math.round(food.carbs || 0),
+        fat: Math.round(food.fat || 0),
+        fiber: Math.round(food.fiber || 0),
+        isBrazilian: true,
+        isHealthy: true
+      }))
+
+      if (detectedFoods.length === 0) {
+        throw new Error('Nenhum alimento detectado na foto. Tente uma foto mais clara.')
+      }
+
+      setSelectedFoods([...selectedFoods, ...detectedFoods])
+      setIsDialogOpen(true)
+
+      toast.success('Foto analisada!', {
+        description: `${detectedFoods.length} ${detectedFoods.length === 1 ? 'alimento detectado' : 'alimentos detectados'}. ${data.warning || '⚠️ Estimativas aproximadas, ajuste se necessário.'}`,
+        duration: 8000
+      })
     } catch (error: any) {
       console.error('Erro ao analisar foto:', error)
       toast.error('Erro ao analisar foto', {
