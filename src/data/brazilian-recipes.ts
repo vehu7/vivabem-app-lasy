@@ -342,6 +342,259 @@ export const BRAZILIAN_RECIPES: BrazilianRecipe[] = [
       fiber: 2
     },
     tips: 'Versão mais leve: use apenas ovos e cebola. Adicione cenoura ralada e uvas-passas para versão adocicada.'
+  },
+  {
+    id: 'wrap-frango-light',
+    name: 'Wrap de Frango Light',
+    description: 'Refeição rápida, proteica e portátil',
+    prepTime: 10,
+    servings: 1,
+    estimatedCost: 'R$ 5-8',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Almoço', 'Dieta', 'Fitness'],
+    ingredients: [
+      '1 tortilha integral',
+      '100g de peito de frango grelhado (pré-cozido)',
+      'Alface e tomate',
+      '1 colher de sopa de iogurte natural',
+      'Temperos: limão, sal, pimenta'
+    ],
+    instructions: [
+      'Desfie ou corte o frango em tiras',
+      'Aqueça a tortilha por 30 segundos',
+      'Monte: alface, frango, tomate e iogurte',
+      'Enrole como um burrito',
+      'Pronto para comer!'
+    ],
+    nutrition: {
+      calories: 320,
+      protein: 35,
+      carbs: 32,
+      fat: 6,
+      fiber: 5
+    },
+    tips: 'Prepare frangos grelhados no domingo para a semana toda. Substitua iogurte por guacamole para mais gorduras boas.'
+  },
+  {
+    id: 'smoothie-proteico-verde',
+    name: 'Smoothie Proteico Verde',
+    description: 'Bebida nutritiva completa em 3 minutos',
+    prepTime: 3,
+    servings: 1,
+    estimatedCost: 'R$ 4-7',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Café da Manhã', 'Vegetariano', 'Dieta', 'Detox'],
+    ingredients: [
+      '1 xícara de espinafre ou couve',
+      '1/2 banana',
+      '1 scoop de whey protein (ou 2 colheres de sopa de aveia)',
+      '200ml de água ou leite',
+      '1 colher de sopa de linhaça',
+      'Gelo a gosto'
+    ],
+    instructions: [
+      'Coloque todos os ingredientes no liquidificador',
+      'Bata por 1 minuto até ficar homogêneo',
+      'Beba imediatamente'
+    ],
+    nutrition: {
+      calories: 245,
+      protein: 28,
+      carbs: 24,
+      fat: 6,
+      fiber: 8
+    },
+    tips: 'Espinafre não altera o sabor! Congele bananas maduras em pedaços para smoothies mais cremosos.'
+  },
+  {
+    id: 'atum-abacate-rapido',
+    name: 'Atum com Abacate Rápido',
+    description: 'Proteína + gordura boa em 5 minutos',
+    prepTime: 5,
+    servings: 1,
+    estimatedCost: 'R$ 6-10',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Almoço', 'Lanche', 'Dieta', 'Ômega-3'],
+    ingredients: [
+      '1 lata de atum (em água)',
+      '1/2 abacate',
+      'Suco de 1/2 limão',
+      'Tomate cereja',
+      'Sal e pimenta',
+      'Torradas integrais (opcional)'
+    ],
+    instructions: [
+      'Escorra o atum',
+      'Amasse o abacate com um garfo',
+      'Misture atum, abacate e limão',
+      'Tempere com sal e pimenta',
+      'Sirva com tomates e torradas'
+    ],
+    nutrition: {
+      calories: 285,
+      protein: 28,
+      carbs: 12,
+      fat: 16,
+      fiber: 7
+    },
+    tips: 'Atum tem ômega-3 e o abacate traz saciedade. Prepare em potes para levar ao trabalho.'
+  },
+  {
+    id: 'iogurte-proteico-granola',
+    name: 'Iogurte Proteico com Granola Caseira',
+    description: 'Café da manhã nutritivo pronto em 2 minutos',
+    prepTime: 2,
+    servings: 1,
+    estimatedCost: 'R$ 3-6',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Café da Manhã', 'Vegetariano', 'Proteico'],
+    ingredients: [
+      '200g de iogurte grego natural',
+      '2 colheres de sopa de granola',
+      '1 colher de sopa de mel',
+      'Frutas vermelhas (morango, mirtilo)',
+      '1 colher de sopa de castanhas picadas'
+    ],
+    instructions: [
+      'Coloque o iogurte em uma tigela',
+      'Adicione a granola por cima',
+      'Regue com mel',
+      'Finalize com frutas e castanhas'
+    ],
+    nutrition: {
+      calories: 315,
+      protein: 22,
+      carbs: 36,
+      fat: 10,
+      fiber: 4
+    },
+    tips: 'Iogurte grego tem 2x mais proteína que o normal. Faça granola caseira (aveia + mel + forno) para economizar.'
+  },
+  {
+    id: 'salada-caesar-light',
+    name: 'Salada Caesar Proteica Light',
+    description: 'Salada completa e saciante em 10 minutos',
+    prepTime: 10,
+    servings: 1,
+    estimatedCost: 'R$ 8-12',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Almoço', 'Dieta', 'Salada'],
+    ingredients: [
+      '2 xícaras de alface romana',
+      '120g de frango grelhado',
+      '2 colheres de sopa de parmesão ralado',
+      '1 ovo cozido',
+      'Molho: 1 colher de iogurte + mostarda + limão',
+      'Croutons integrais (opcional)'
+    ],
+    instructions: [
+      'Corte a alface em tiras',
+      'Fatie o frango grelhado',
+      'Prepare o molho misturando iogurte, mostarda e limão',
+      'Monte a salada: alface + frango + ovo + parmesão',
+      'Regue com o molho e adicione croutons'
+    ],
+    nutrition: {
+      calories: 365,
+      protein: 42,
+      carbs: 18,
+      fat: 14,
+      fiber: 4
+    },
+    tips: 'Use frango assado de churrascaria para economizar tempo. Molho de iogurte é mais saudável que caesar tradicional.'
+  },
+  {
+    id: 'omelete-microondas',
+    name: 'Omelete no Micro-ondas',
+    description: 'Proteína rápida em 3 minutos (sem fogão!)',
+    prepTime: 3,
+    servings: 1,
+    estimatedCost: 'R$ 2-4',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Café da Manhã', 'Lanche'],
+    ingredients: [
+      '2 ovos',
+      '2 colheres de sopa de leite',
+      'Queijo muçarela picado',
+      'Tomate e orégano',
+      'Sal e pimenta'
+    ],
+    instructions: [
+      'Bata os ovos com leite, sal e pimenta em uma caneca de micro-ondas',
+      'Adicione queijo e tomate picados',
+      'Leve ao micro-ondas por 1min30s a 2min (potência alta)',
+      'Deixe descansar 30 segundos',
+      'Desenforme e sirva'
+    ],
+    nutrition: {
+      calories: 245,
+      protein: 20,
+      carbs: 4,
+      fat: 17,
+      fiber: 1
+    },
+    tips: 'Perfeito para quem não tem tempo. Use canecas de vidro ou cerâmica (nunca metal). Varie os recheios!'
+  },
+  {
+    id: 'pasta-atum-cottage',
+    name: 'Pasta de Atum com Cottage',
+    description: 'Lanche proteico em 5 minutos',
+    prepTime: 5,
+    servings: 2,
+    estimatedCost: 'R$ 6-10',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Lanche', 'Dieta'],
+    ingredients: [
+      '1 lata de atum',
+      '4 colheres de sopa de queijo cottage',
+      '1 colher de sopa de iogurte natural',
+      'Cebolinha, sal e pimenta',
+      'Biscoitos integrais ou vegetais crus'
+    ],
+    instructions: [
+      'Escorra bem o atum',
+      'Misture atum, cottage e iogurte',
+      'Tempere com cebolinha, sal e pimenta',
+      'Sirva com biscoitos integrais ou cenoura/pepino'
+    ],
+    nutrition: {
+      calories: 165,
+      protein: 26,
+      carbs: 6,
+      fat: 5,
+      fiber: 2
+    },
+    tips: 'Perfeito para levar ao trabalho em pote. Cottage tem mais proteína e menos gordura que cream cheese.'
+  },
+  {
+    id: 'crepioca-simples',
+    name: 'Crepioca Express',
+    description: 'Híbrido de crepe + tapioca em 5 minutos',
+    prepTime: 5,
+    servings: 1,
+    estimatedCost: 'R$ 2-4',
+    difficulty: 'fácil',
+    tags: ['Rápido', 'Proteico', 'Café da Manhã', 'Sem Glúten'],
+    ingredients: [
+      '1 ovo',
+      '2 colheres de sopa de tapioca',
+      'Recheio: queijo, peito de peru, tomate',
+      'Sal e orégano'
+    ],
+    instructions: [
+      'Bata o ovo com a tapioca e sal',
+      'Despeje em frigideira antiaderente quente',
+      'Quando solidificar, adicione o recheio',
+      'Dobre ao meio e sirva'
+    ],
+    nutrition: {
+      calories: 235,
+      protein: 16,
+      carbs: 26,
+      fat: 8,
+      fiber: 1
+    },
+    tips: 'Sem frigideira? Faça no micro-ondas (1min30s). Versão doce: banana + canela + mel.'
   }
 ]
 
@@ -358,6 +611,7 @@ export const RECIPE_FILTERS = {
     'Café da Manhã',
     'Almoço',
     'Jantar',
+    'Lanche',
     'Sobremesa',
     'Pré-Treino',
     'Pós-Treino',
@@ -366,7 +620,10 @@ export const RECIPE_FILTERS = {
     'Inverno',
     'Regional',
     'Fitness',
-    'Ganho de Massa'
+    'Ganho de Massa',
+    'Dieta',
+    'Detox',
+    'Ômega-3'
   ],
   difficulty: ['fácil', 'média', 'difícil']
 }

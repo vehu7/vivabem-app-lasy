@@ -154,8 +154,8 @@ Retorne no formato JSON:
           Cardápio Personalizado
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
             Seu Cardápio Personalizado
@@ -166,7 +166,7 @@ Retorne no formato JSON:
         </DialogHeader>
 
         {!recommendation && !isGenerating && (
-          <div className="flex-1 flex flex-col items-center justify-center space-y-6 p-6">
+          <div className="flex-1 flex flex-col items-center justify-center space-y-6 p-6 overflow-auto">
             <Sparkles className="w-16 h-16 text-primary opacity-50" />
             <div className="text-center space-y-2">
               <h3 className="text-xl font-semibold">Gerar Cardápio com IA</h3>
@@ -213,8 +213,8 @@ Retorne no formato JSON:
         )}
 
         {recommendation && !isGenerating && (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
               <div className="space-y-6">
                 {/* Header do cardápio */}
                 <div>
@@ -329,7 +329,7 @@ Retorne no formato JSON:
             </ScrollArea>
 
             {/* Botões de ação */}
-            <div className="pt-4 border-t space-y-2">
+            <div className="pt-4 border-t space-y-2 flex-shrink-0">
               <Button onClick={generateDietRecommendation} variant="outline" className="w-full" disabled={isGenerating}>
                 <Sparkles className="w-4 h-4 mr-2" />
                 Gerar Novo Cardápio

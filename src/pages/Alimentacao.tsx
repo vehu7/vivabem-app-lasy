@@ -255,16 +255,6 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
         await stopBarcodeScanner()
       }
 
-      // Solicitar permissões primeiro
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
-        })
-        stream.getTracks().forEach(track => track.stop())
-      } catch (permError: any) {
-        throw new Error('Permissão de câmera negada. Acesse as configurações do navegador para permitir o acesso à câmera.')
-      }
-
       const html5QrCode = new Html5Qrcode("barcode-reader")
       barcodeScannerRef.current = html5QrCode
 
@@ -304,9 +294,23 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
       )
     } catch (error: any) {
       console.error('Erro ao iniciar scanner:', error)
+
+      // Mensagem específica para erro de permissão
+      let errorMessage = 'Verifique as permissões nas configurações do navegador'
+
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMessage = 'Permissão de câmera negada. Clique no ícone 🔒 ao lado da URL e permita o acesso à câmera.'
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'Nenhuma câmera encontrada no dispositivo.'
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Câmera em uso por outro aplicativo. Feche outros apps e tente novamente.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       toast.error('Erro ao acessar câmera', {
-        description: error.message || 'Verifique as permissões nas configurações do navegador',
-        duration: 6000
+        description: errorMessage,
+        duration: 8000
       })
       setIsScanningBarcode(false)
     }
@@ -346,7 +350,7 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY
       if (!apiKey) {
-        throw new Error('Chave da API Gemini não configurada. Configure VITE_GEMINI_API_KEY no arquivo .env')
+        throw new Error('ERRO: Variável de ambiente VITE_GEMINI_API_KEY não está definida. Configure o arquivo .env com sua chave da API Gemini.')
       }
 
       // Validar tamanho do arquivo (máx 4MB)
@@ -361,14 +365,18 @@ Dê uma dica prática, amigável e motivadora (máximo 2 linhas). Foque em: equi
 
       // Converter imagem para base64
       const reader = new FileReader()
-      reader.readAsDataURL(file)
-
-      await new Promise((resolve, reject) => {
-        reader.onload = resolve
-        reader.onerror = reject
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(new Error('Erro ao ler arquivo'))
       })
 
-      const base64Image = (reader.result as string).split(',')[1]
+      reader.readAsDataURL(file)
+      const dataUrl = await base64Promise
+      const base64Image = dataUrl.split(',')[1]
+
+      if (!base64Image) {
+        throw new Error('Erro ao processar imagem')
+      }
 
       const genAI = new GoogleGenerativeAI(apiKey)
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })

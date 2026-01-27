@@ -36,31 +36,32 @@ export function RecipesDialog() {
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <ChefHat className="w-4 h-4 mr-2" />
-          Receitas Brasileiras
+          Receitas
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ChefHat className="w-5 h-5 text-primary" />
-            Receitas Brasileiras Saudáveis
+            Receitas Saudáveis
           </DialogTitle>
           <DialogDescription>
-            Receitas práticas com informações nutricionais completas
+            Receitas práticas e rápidas para dieta com informações nutricionais completas
           </DialogDescription>
         </DialogHeader>
 
         {!selectedRecipe ? (
-          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+          <div className="flex-1 overflow-hidden flex flex-col space-y-4 min-h-0">
             {/* Busca */}
             <Input
               placeholder="Buscar receita ou tag (ex: proteico, rápido)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-shrink-0"
             />
 
             {/* Lista de receitas */}
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredRecipes.map((recipe) => (
                   <Card
@@ -117,8 +118,8 @@ export function RecipesDialog() {
             </ScrollArea>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-4">
+          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <ScrollArea className="flex-1 w-full pr-4 min-h-0">
               <div className="space-y-6">
                 {/* Header da receita */}
                 <div>
@@ -242,7 +243,7 @@ export function RecipesDialog() {
             </ScrollArea>
 
             {/* Botão voltar */}
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t flex-shrink-0">
               <Button onClick={() => setSelectedRecipe(null)} variant="outline" className="w-full">
                 ← Voltar para receitas
               </Button>
