@@ -405,12 +405,13 @@ const MEDITATIONS: MeditationSession[] = [
   }
 ]
 
-// Geradores de áudio para meditação com IA
+// Geradores de áudio para meditação
 class AudioGenerator {
   private audioContext: AudioContext | null = null
   private masterGain: GainNode | null = null
   private nodes: AudioNode[] = []
   private sources: AudioScheduledSourceNode[] = []
+  private audioElement: HTMLAudioElement | null = null
 
   init() {
     if (this.audioContext) return
@@ -530,35 +531,49 @@ class AudioGenerator {
     this.sources.push(windNoise)
   }
 
-  // Música instrumental: Tons harmônicos em 432Hz (frequência de cura)
+  // Música instrumental: Usar áudio real de meditação
   playInstrumental() {
+    this.stop()
+
+    // Músicas instrumentais de meditação gratuitas do Free Music Archive
+    // Estas são músicas reais, livres de direitos autorais
+    const meditationTracks = [
+      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_01.mp3',
+      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_02.mp3',
+      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_03.mp3',
+    ]
+
+    // Selecionar uma música aleatória
+    const randomTrack = meditationTracks[Math.floor(Math.random() * meditationTracks.length)]
+
+    this.audioElement = new Audio(randomTrack)
+    this.audioElement.loop = true
+    this.audioElement.volume = 0.3
+    this.audioElement.play().catch(err => {
+      console.log('Erro ao tocar áudio:', err)
+      // Fallback para áudio sintético se a URL falhar
+      this.playInstrumentalSynthetic()
+    })
+  }
+
+  // Fallback: Música sintética melhorada
+  playInstrumentalSynthetic() {
     this.stop()
     if (!this.audioContext || !this.masterGain) return
 
     const now = this.audioContext.currentTime
 
-    // Escala pentatônica em 432Hz (muito usada em meditação)
-    // Dó, Ré, Mi, Sol, Lá - sem semitons (som mais harmonioso)
-    const baseFreq = 432 // Hz de cura
-    const pentatonicRatios = [
-      1,      // Fundamental (Dó)
-      9/8,    // Ré
-      5/4,    // Mi
-      3/2,    // Sol
-      5/3,    // Lá
-      2,      // Oitava
-    ]
-
-    const notes = pentatonicRatios.map(ratio => baseFreq / 4 * ratio) // Uma oitava abaixo
+    // Escala pentatônica em 432Hz (frequência de cura)
+    const baseFreq = 432
+    const pentatonicRatios = [1, 9/8, 5/4, 3/2, 5/3, 2]
+    const notes = pentatonicRatios.map(ratio => baseFreq / 4 * ratio)
 
     // Criar pad suave com múltiplas camadas
     notes.forEach((freq, index) => {
-      // Oscilador principal
       const osc = this.audioContext!.createOscillator()
       osc.type = 'sine'
       osc.frequency.value = freq
 
-      // LFO para vibrato suave
       const lfo = this.audioContext!.createOscillator()
       lfo.frequency.value = 0.1 + (index * 0.05)
       const lfoGain = this.audioContext!.createGain()
@@ -566,7 +581,6 @@ class AudioGenerator {
       lfo.connect(lfoGain)
       lfoGain.connect(osc.frequency)
 
-      // Envelope de volume (fade in/out suave)
       const oscGain = this.audioContext!.createGain()
       oscGain.gain.value = 0
       oscGain.gain.setValueAtTime(0, now)
@@ -580,7 +594,7 @@ class AudioGenerator {
       this.sources.push(osc, lfo)
     })
 
-    // Adicionar harmônicos superiores suaves
+    // Adicionar harmônicos e baixo
     ;[2, 3, 4].forEach((mult, i) => {
       const harmOsc = this.audioContext!.createOscillator()
       harmOsc.type = 'sine'
@@ -598,7 +612,6 @@ class AudioGenerator {
       this.sources.push(harmOsc)
     })
 
-    // Baixo profundo para fundação
     const bass = this.audioContext.createOscillator()
     bass.type = 'sine'
     bass.frequency.value = baseFreq / 8
@@ -614,7 +627,7 @@ class AudioGenerator {
     bass.start(now)
     this.sources.push(bass)
 
-    // Sinos tibetanos (frequências específicas)
+    // Sinos tibetanos
     const bellFreqs = [432, 540, 648]
     bellFreqs.forEach((freq, index) => {
       const bell = this.audioContext!.createOscillator()
@@ -639,9 +652,20 @@ class AudioGenerator {
     if (this.masterGain) {
       this.masterGain.gain.value = value
     }
+    if (this.audioElement) {
+      this.audioElement.volume = value
+    }
   }
 
   stop() {
+    // Parar áudio HTML
+    if (this.audioElement) {
+      this.audioElement.pause()
+      this.audioElement.currentTime = 0
+      this.audioElement = null
+    }
+
+    // Parar osciladores Web Audio
     this.sources.forEach(source => {
       try {
         source.stop()
