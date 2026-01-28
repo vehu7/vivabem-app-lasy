@@ -405,133 +405,295 @@ const MEDITATIONS: MeditationSession[] = [
   }
 ]
 
-// Geradores de áudio para meditação - Músicas reais da internet
+// Geradores de áudio para meditação - Sistema híbrido (URLs + Síntese)
 class AudioGenerator {
+  private audioContext: AudioContext | null = null
+  private masterGain: GainNode | null = null
+  private sources: AudioScheduledSourceNode[] = []
   private audioElement: HTMLAudioElement | null = null
 
-  // Sons da natureza reais: Ondas, chuva, cachoeira
+  init() {
+    if (this.audioContext) return
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    this.masterGain = this.audioContext.createGain()
+    this.masterGain.connect(this.audioContext.destination)
+    this.masterGain.gain.value = 0.4
+  }
+
+  // Sons da natureza: Ondas, chuva, cachoeira (sintetizados)
   playNatureSounds() {
     this.stop()
+    this.init()
 
-    // Sons da natureza gratuitos e livres de direitos autorais
-    // Fonte: Free Sound Effects e Audio Library
-    const natureSounds = [
-      // Ondas do mar
-      'https://cdn.pixabay.com/audio/2022/03/10/audio_c3c6d6d7f6.mp3', // Ocean Waves
-      // Chuva suave
-      'https://cdn.pixabay.com/audio/2022/03/10/audio_1882619c7b.mp3', // Rain Sound
-      // Cachoeira
-      'https://cdn.pixabay.com/audio/2024/03/13/audio_04c010fb7e.mp3', // Waterfall
-      // Floresta com pássaros
-      'https://cdn.pixabay.com/audio/2022/03/24/audio_c9c38d92dc.mp3', // Forest Birds
-    ]
+    if (!this.audioContext || !this.masterGain) return
 
-    const randomSound = natureSounds[Math.floor(Math.random() * natureSounds.length)]
+    const now = this.audioContext.currentTime
 
-    this.audioElement = new Audio(randomSound)
-    this.audioElement.loop = true
-    this.audioElement.volume = 0.4
-    this.audioElement.crossOrigin = 'anonymous'
+    // 1. Ondas do mar suaves (frequências graves ondulantes)
+    const waveLFO = this.audioContext.createOscillator()
+    waveLFO.frequency.value = 0.2 // Ritmo das ondas
+    const waveLFOGain = this.audioContext.createGain()
+    waveLFOGain.gain.value = 40
 
-    this.audioElement.play().catch(err => {
-      console.log('Carregando sons da natureza...', err)
-      // Tentar próximo som se falhar
-      const nextIndex = (natureSounds.indexOf(randomSound) + 1) % natureSounds.length
-      this.audioElement = new Audio(natureSounds[nextIndex])
-      this.audioElement.loop = true
-      this.audioElement.volume = 0.4
-      this.audioElement.play().catch(() => {
-        console.log('Sons da natureza indisponíveis no momento')
-      })
-    })
+    const wave = this.audioContext.createOscillator()
+    wave.type = 'sine'
+    wave.frequency.value = 70
+
+    waveLFO.connect(waveLFOGain)
+    waveLFOGain.connect(wave.frequency)
+
+    const waveGain = this.audioContext.createGain()
+    waveGain.gain.value = 0.2
+    wave.connect(waveGain)
+    waveGain.connect(this.masterGain)
+
+    wave.start(now)
+    waveLFO.start(now)
+    this.sources.push(wave, waveLFO)
+
+    // 2. Som de água fluindo (filtro de ruído)
+    const bufferSize = 4 * this.audioContext.sampleRate
+    const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
+    const output = noiseBuffer.getChannelData(0)
+
+    // Ruído rosa (som mais natural de água)
+    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1
+      b0 = 0.99886 * b0 + white * 0.0555179
+      b1 = 0.99332 * b1 + white * 0.0750759
+      b2 = 0.96900 * b2 + white * 0.1538520
+      b3 = 0.86650 * b3 + white * 0.3104856
+      b4 = 0.55000 * b4 + white * 0.5329522
+      b5 = -0.7616 * b5 - white * 0.0168980
+      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08
+      b6 = white * 0.115926
+    }
+
+    const noise = this.audioContext.createBufferSource()
+    noise.buffer = noiseBuffer
+    noise.loop = true
+
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 1200
+    filter.Q.value = 0.7
+
+    const noiseGain = this.audioContext.createGain()
+    noiseGain.gain.value = 0.25
+
+    noise.connect(filter)
+    filter.connect(noiseGain)
+    noiseGain.connect(this.masterGain)
+    noise.start(now)
+    this.sources.push(noise as any)
+
+    // 3. Pássaros ocasionais
+    const createBird = (delay: number, freq: number) => {
+      const bird = this.audioContext!.createOscillator()
+      bird.type = 'sine'
+      bird.frequency.value = freq
+
+      const birdGain = this.audioContext!.createGain()
+      birdGain.gain.setValueAtTime(0, now + delay)
+      birdGain.gain.linearRampToValueAtTime(0.02, now + delay + 0.05)
+      birdGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.5)
+
+      bird.connect(birdGain)
+      birdGain.connect(this.masterGain!)
+      bird.start(now + delay)
+      bird.stop(now + delay + 0.6)
+      this.sources.push(bird)
+    }
+
+    // Criar vários pássaros
+    for (let i = 0; i < 12; i++) {
+      createBird(Math.random() * 15 + i * 2, 2000 + Math.random() * 1500)
+    }
+
+    // 4. Vento suave
+    const wind = this.audioContext.createBufferSource()
+    wind.buffer = noiseBuffer
+    wind.loop = true
+
+    const windFilter = this.audioContext.createBiquadFilter()
+    windFilter.type = 'lowpass'
+    windFilter.frequency.value = 400
+
+    const windGain = this.audioContext.createGain()
+    windGain.gain.value = 0.08
+
+    wind.connect(windFilter)
+    windFilter.connect(windGain)
+    windGain.connect(this.masterGain)
+    wind.start(now)
+    this.sources.push(wind as any)
   }
 
-  // Música instrumental real: Piano, violino, instrumentos reais
+  // Música instrumental: Piano, violino, harpa (sintetizado)
   playInstrumental() {
     this.stop()
+    this.init()
 
-    // Músicas instrumentais de meditação - Piano e instrumentos reais
-    // Fonte: Free Music Archive, Audio Library, Pixabay
-    const instrumentalTracks = [
-      // Piano meditativo
-      'https://cdn.pixabay.com/audio/2022/05/13/audio_257112e3ff.mp3', // Peaceful Piano
-      // Flauta relaxante
-      'https://cdn.pixabay.com/audio/2023/02/28/audio_c7222c6e9c.mp3', // Meditation Flute
-      // Música ambiente instrumental
-      'https://cdn.pixabay.com/audio/2022/03/23/audio_2f5c30038f.mp3', // Ambient Meditation
-      // Harpa celestial
-      'https://cdn.pixabay.com/audio/2024/07/31/audio_10219faa04.mp3', // Celestial Harp
-      // Piano e cordas
-      'https://cdn.pixabay.com/audio/2022/11/22/audio_29fb628ca9.mp3', // Meditation Piano
+    if (!this.audioContext || !this.masterGain) return
+
+    const now = this.audioContext.currentTime
+
+    // Acordes de piano em 432Hz (frequência de cura)
+    const chordNotes = [
+      [108, 135, 162], // Acorde 1
+      [96, 121, 144],  // Acorde 2
+      [108, 135, 162], // Acorde 1
+      [121, 152, 182], // Acorde 3
     ]
 
-    const randomTrack = instrumentalTracks[Math.floor(Math.random() * instrumentalTracks.length)]
+    // Tocar acordes em sequência
+    chordNotes.forEach((chord, chordIndex) => {
+      chord.forEach((freq, noteIndex) => {
+        const osc = this.audioContext!.createOscillator()
+        osc.type = 'triangle' // Som mais suave, tipo piano
 
-    this.audioElement = new Audio(randomTrack)
-    this.audioElement.loop = true
-    this.audioElement.volume = 0.3
-    this.audioElement.crossOrigin = 'anonymous'
+        const oscGain = this.audioContext!.createGain()
+        const startTime = now + (chordIndex * 4)
 
-    this.audioElement.play().catch(err => {
-      console.log('Carregando música instrumental...', err)
-      // Tentar próxima música se falhar
-      const nextIndex = (instrumentalTracks.indexOf(randomTrack) + 1) % instrumentalTracks.length
-      this.audioElement = new Audio(instrumentalTracks[nextIndex])
-      this.audioElement.loop = true
-      this.audioElement.volume = 0.3
-      this.audioElement.play().catch(() => {
-        console.log('Música instrumental indisponível no momento')
+        // Envelope ADSR (ataque, decay, sustain, release)
+        oscGain.gain.setValueAtTime(0, startTime)
+        oscGain.gain.linearRampToValueAtTime(0.08 / (noteIndex + 1), startTime + 0.1)
+        oscGain.gain.linearRampToValueAtTime(0.05 / (noteIndex + 1), startTime + 0.5)
+        oscGain.gain.setValueAtTime(0.05 / (noteIndex + 1), startTime + 3.5)
+        oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 4)
+
+        osc.frequency.value = freq
+        osc.connect(oscGain)
+        oscGain.connect(this.masterGain!)
+
+        osc.start(startTime)
+        osc.stop(startTime + 4.1)
+        this.sources.push(osc)
       })
+    })
+
+    // Baixo contínuo (fundação)
+    const bass = this.audioContext.createOscillator()
+    bass.type = 'sine'
+    bass.frequency.value = 54 // C1 em 432Hz
+
+    const bassGain = this.audioContext.createGain()
+    bassGain.gain.value = 0
+    bassGain.gain.setValueAtTime(0, now)
+    bassGain.gain.linearRampToValueAtTime(0.12, now + 2)
+
+    bass.connect(bassGain)
+    bassGain.connect(this.masterGain)
+    bass.start(now)
+    this.sources.push(bass)
+
+    // Harmônicos superiores (brilho)
+    ;[2, 3, 4].forEach((mult, i) => {
+      const harm = this.audioContext!.createOscillator()
+      harm.type = 'sine'
+      harm.frequency.value = 54 * mult
+
+      const harmGain = this.audioContext!.createGain()
+      harmGain.gain.value = 0
+      harmGain.gain.setValueAtTime(0, now)
+      harmGain.gain.linearRampToValueAtTime(0.03 / (i + 2), now + 3)
+
+      harm.connect(harmGain)
+      harmGain.connect(this.masterGain!)
+      harm.start(now)
+      this.sources.push(harm)
+    })
+
+    // Sinos tibetanos (efeito de harpa/cristal)
+    ;[432, 540, 648].forEach((freq, i) => {
+      const bell = this.audioContext!.createOscillator()
+      bell.type = 'sine'
+      bell.frequency.value = freq
+
+      const bellGain = this.audioContext!.createGain()
+      const time = now + 2 + (i * 2.5)
+      bellGain.gain.setValueAtTime(0, time)
+      bellGain.gain.linearRampToValueAtTime(0.06, time + 0.1)
+      bellGain.gain.exponentialRampToValueAtTime(0.001, time + 3)
+
+      bell.connect(bellGain)
+      bellGain.connect(this.masterGain!)
+      bell.start(time)
+      bell.stop(time + 3.5)
+      this.sources.push(bell)
     })
   }
 
-  // Músicas com letra/voz para meditação
+  // Música vocal: Mantras (usando síntese + Web Speech)
   playVocalMusic() {
     this.stop()
+    this.init()
 
-    // Músicas vocais de meditação (mantras, cantos)
-    // Fonte: Free Music Archive, Audio Library
-    const vocalTracks = [
-      // Om Chanting
-      'https://cdn.pixabay.com/audio/2022/10/27/audio_cfcf836bd6.mp3', // Om Meditation
-      // Tibetan Singing Bowls com voz
-      'https://cdn.pixabay.com/audio/2023/06/21/audio_70063627f4.mp3', // Tibetan Chant
-      // Mantra meditativo
-      'https://cdn.pixabay.com/audio/2024/02/20/audio_c9886e3e5d.mp3', // Mantra Meditation
-      // Canto gregoriano moderno
-      'https://cdn.pixabay.com/audio/2022/08/04/audio_cd29719ad9.mp3', // Meditation Chant
-    ]
+    if (!this.audioContext || !this.masterGain) return
 
-    const randomTrack = vocalTracks[Math.floor(Math.random() * vocalTracks.length)]
+    // Tocar música instrumental de fundo
+    this.playInstrumental()
 
-    this.audioElement = new Audio(randomTrack)
-    this.audioElement.loop = true
-    this.audioElement.volume = 0.3
-    this.audioElement.crossOrigin = 'anonymous'
+    // Adicionar mantras vocais periodicamente
+    const mantras = ['Om', 'Ah', 'Hum', 'Om Shanti']
+    let currentMantra = 0
 
-    this.audioElement.play().catch(err => {
-      console.log('Carregando música com voz...', err)
-      // Fallback para instrumental se vocal não funcionar
-      this.playInstrumental()
-    })
+    const speakMantra = () => {
+      if (!window.speechSynthesis) return
+
+      const utterance = new SpeechSynthesisUtterance(mantras[currentMantra])
+      utterance.lang = 'en-US'
+      utterance.rate = 0.5 // Bem devagar
+      utterance.pitch = 0.8 // Tom grave
+      utterance.volume = 0.4
+
+      window.speechSynthesis.speak(utterance)
+
+      currentMantra = (currentMantra + 1) % mantras.length
+
+      // Repetir a cada 8 segundos
+      setTimeout(speakMantra, 8000)
+    }
+
+    // Começar mantras após 2 segundos
+    setTimeout(speakMantra, 2000)
   }
 
   setVolume(value: number) {
+    if (this.masterGain) {
+      this.masterGain.gain.value = value
+    }
     if (this.audioElement) {
       this.audioElement.volume = value
     }
   }
 
   stop() {
+    // Parar áudio HTML
     if (this.audioElement) {
       this.audioElement.pause()
       this.audioElement.currentTime = 0
       this.audioElement = null
     }
+
+    // Parar osciladores
+    this.sources.forEach(source => {
+      try {
+        source.stop()
+      } catch (e) {
+        // Já parado
+      }
+    })
+    this.sources = []
   }
 
   destroy() {
     this.stop()
+    if (this.audioContext) {
+      this.audioContext.close()
+      this.audioContext = null
+    }
   }
 }
 
