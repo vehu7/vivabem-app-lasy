@@ -405,284 +405,133 @@ const MEDITATIONS: MeditationSession[] = [
   }
 ]
 
-// Geradores de áudio para meditação
+// Geradores de áudio para meditação - Músicas reais da internet
 class AudioGenerator {
-  private audioContext: AudioContext | null = null
-  private masterGain: GainNode | null = null
-  private nodes: AudioNode[] = []
-  private sources: AudioScheduledSourceNode[] = []
   private audioElement: HTMLAudioElement | null = null
 
-  init() {
-    if (this.audioContext) return
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    this.masterGain = this.audioContext.createGain()
-    this.masterGain.connect(this.audioContext.destination)
-    this.masterGain.gain.value = 0.3
-  }
-
-  // Sons da natureza: Ondas do mar, pássaros, vento
+  // Sons da natureza reais: Ondas, chuva, cachoeira
   playNatureSounds() {
     this.stop()
-    if (!this.audioContext || !this.masterGain) return
 
-    const now = this.audioContext.currentTime
+    // Sons da natureza gratuitos e livres de direitos autorais
+    // Fonte: Free Sound Effects e Audio Library
+    const natureSounds = [
+      // Ondas do mar
+      'https://cdn.pixabay.com/audio/2022/03/10/audio_c3c6d6d7f6.mp3', // Ocean Waves
+      // Chuva suave
+      'https://cdn.pixabay.com/audio/2022/03/10/audio_1882619c7b.mp3', // Rain Sound
+      // Cachoeira
+      'https://cdn.pixabay.com/audio/2024/03/13/audio_04c010fb7e.mp3', // Waterfall
+      // Floresta com pássaros
+      'https://cdn.pixabay.com/audio/2022/03/24/audio_c9c38d92dc.mp3', // Forest Birds
+    ]
 
-    // 1. Ondas suaves do mar (graves ondulantes)
-    const waveLFO = this.audioContext.createOscillator()
-    waveLFO.frequency.value = 0.15 // Ritmo lento das ondas
-    const waveLFOGain = this.audioContext.createGain()
-    waveLFOGain.gain.value = 30
-    waveLFO.connect(waveLFOGain)
+    const randomSound = natureSounds[Math.floor(Math.random() * natureSounds.length)]
 
-    const waveOsc = this.audioContext.createOscillator()
-    waveOsc.type = 'sine'
-    waveOsc.frequency.value = 80
-    waveLFOGain.connect(waveOsc.frequency)
+    this.audioElement = new Audio(randomSound)
+    this.audioElement.loop = true
+    this.audioElement.volume = 0.4
+    this.audioElement.crossOrigin = 'anonymous'
 
-    const waveGain = this.audioContext.createGain()
-    waveGain.gain.value = 0.15
-    waveOsc.connect(waveGain)
-    waveGain.connect(this.masterGain)
-
-    waveOsc.start(now)
-    waveLFO.start(now)
-    this.sources.push(waveOsc, waveLFO)
-
-    // 2. Ruído suave de água (filtrado)
-    const bufferSize = 2 * this.audioContext.sampleRate
-    const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
-    const output = noiseBuffer.getChannelData(0)
-
-    // Gerar ruído rosa (mais natural)
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1
-      b0 = 0.99886 * b0 + white * 0.0555179
-      b1 = 0.99332 * b1 + white * 0.0750759
-      b2 = 0.96900 * b2 + white * 0.1538520
-      b3 = 0.86650 * b3 + white * 0.3104856
-      b4 = 0.55000 * b4 + white * 0.5329522
-      b5 = -0.7616 * b5 - white * 0.0168980
-      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11
-      b6 = white * 0.115926
-    }
-
-    const noise = this.audioContext.createBufferSource()
-    noise.buffer = noiseBuffer
-    noise.loop = true
-
-    // Filtro passa-baixa para som de água suave
-    const filter = this.audioContext.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 800
-    filter.Q.value = 0.5
-
-    const noiseGain = this.audioContext.createGain()
-    noiseGain.gain.value = 0.08
-
-    noise.connect(filter)
-    filter.connect(noiseGain)
-    noiseGain.connect(this.masterGain)
-    noise.start(now)
-    this.sources.push(noise)
-
-    // 3. Pássaros ocasionais (tons agudos aleatórios)
-    const createBirdSound = (delay: number) => {
-      const birdOsc = this.audioContext!.createOscillator()
-      birdOsc.type = 'sine'
-      birdOsc.frequency.value = 2000 + Math.random() * 1000
-
-      const birdGain = this.audioContext!.createGain()
-      birdGain.gain.setValueAtTime(0, now + delay)
-      birdGain.gain.linearRampToValueAtTime(0.03, now + delay + 0.05)
-      birdGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.4)
-
-      birdOsc.connect(birdGain)
-      birdGain.connect(this.masterGain!)
-
-      birdOsc.start(now + delay)
-      birdOsc.stop(now + delay + 0.5)
-      this.sources.push(birdOsc)
-    }
-
-    // Criar vários pássaros em tempos aleatórios
-    for (let i = 0; i < 8; i++) {
-      createBirdSound(Math.random() * 10 + i * 3)
-    }
-
-    // 4. Vento suave (ruído filtrado muito grave)
-    const windNoise = this.audioContext.createBufferSource()
-    windNoise.buffer = noiseBuffer
-    windNoise.loop = true
-
-    const windFilter = this.audioContext.createBiquadFilter()
-    windFilter.type = 'lowpass'
-    windFilter.frequency.value = 300
-    windFilter.Q.value = 1
-
-    const windGain = this.audioContext.createGain()
-    windGain.gain.value = 0.05
-
-    windNoise.connect(windFilter)
-    windFilter.connect(windGain)
-    windGain.connect(this.masterGain)
-    windNoise.start(now)
-    this.sources.push(windNoise)
+    this.audioElement.play().catch(err => {
+      console.log('Carregando sons da natureza...', err)
+      // Tentar próximo som se falhar
+      const nextIndex = (natureSounds.indexOf(randomSound) + 1) % natureSounds.length
+      this.audioElement = new Audio(natureSounds[nextIndex])
+      this.audioElement.loop = true
+      this.audioElement.volume = 0.4
+      this.audioElement.play().catch(() => {
+        console.log('Sons da natureza indisponíveis no momento')
+      })
+    })
   }
 
-  // Música instrumental: Usar áudio real de meditação
+  // Música instrumental real: Piano, violino, instrumentos reais
   playInstrumental() {
     this.stop()
 
-    // Músicas instrumentais de meditação gratuitas do Free Music Archive
-    // Estas são músicas reais, livres de direitos autorais
-    const meditationTracks = [
-      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_01.mp3',
-      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_02.mp3',
-      'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kevin_MacLeod/Impact/Kevin_MacLeod_-_Meditation_Impromptu_03.mp3',
+    // Músicas instrumentais de meditação - Piano e instrumentos reais
+    // Fonte: Free Music Archive, Audio Library, Pixabay
+    const instrumentalTracks = [
+      // Piano meditativo
+      'https://cdn.pixabay.com/audio/2022/05/13/audio_257112e3ff.mp3', // Peaceful Piano
+      // Flauta relaxante
+      'https://cdn.pixabay.com/audio/2023/02/28/audio_c7222c6e9c.mp3', // Meditation Flute
+      // Música ambiente instrumental
+      'https://cdn.pixabay.com/audio/2022/03/23/audio_2f5c30038f.mp3', // Ambient Meditation
+      // Harpa celestial
+      'https://cdn.pixabay.com/audio/2024/07/31/audio_10219faa04.mp3', // Celestial Harp
+      // Piano e cordas
+      'https://cdn.pixabay.com/audio/2022/11/22/audio_29fb628ca9.mp3', // Meditation Piano
     ]
 
-    // Selecionar uma música aleatória
-    const randomTrack = meditationTracks[Math.floor(Math.random() * meditationTracks.length)]
+    const randomTrack = instrumentalTracks[Math.floor(Math.random() * instrumentalTracks.length)]
 
     this.audioElement = new Audio(randomTrack)
     this.audioElement.loop = true
     this.audioElement.volume = 0.3
+    this.audioElement.crossOrigin = 'anonymous'
+
     this.audioElement.play().catch(err => {
-      console.log('Erro ao tocar áudio:', err)
-      // Fallback para áudio sintético se a URL falhar
-      this.playInstrumentalSynthetic()
+      console.log('Carregando música instrumental...', err)
+      // Tentar próxima música se falhar
+      const nextIndex = (instrumentalTracks.indexOf(randomTrack) + 1) % instrumentalTracks.length
+      this.audioElement = new Audio(instrumentalTracks[nextIndex])
+      this.audioElement.loop = true
+      this.audioElement.volume = 0.3
+      this.audioElement.play().catch(() => {
+        console.log('Música instrumental indisponível no momento')
+      })
     })
   }
 
-  // Fallback: Música sintética melhorada
-  playInstrumentalSynthetic() {
+  // Músicas com letra/voz para meditação
+  playVocalMusic() {
     this.stop()
-    if (!this.audioContext || !this.masterGain) return
 
-    const now = this.audioContext.currentTime
+    // Músicas vocais de meditação (mantras, cantos)
+    // Fonte: Free Music Archive, Audio Library
+    const vocalTracks = [
+      // Om Chanting
+      'https://cdn.pixabay.com/audio/2022/10/27/audio_cfcf836bd6.mp3', // Om Meditation
+      // Tibetan Singing Bowls com voz
+      'https://cdn.pixabay.com/audio/2023/06/21/audio_70063627f4.mp3', // Tibetan Chant
+      // Mantra meditativo
+      'https://cdn.pixabay.com/audio/2024/02/20/audio_c9886e3e5d.mp3', // Mantra Meditation
+      // Canto gregoriano moderno
+      'https://cdn.pixabay.com/audio/2022/08/04/audio_cd29719ad9.mp3', // Meditation Chant
+    ]
 
-    // Escala pentatônica em 432Hz (frequência de cura)
-    const baseFreq = 432
-    const pentatonicRatios = [1, 9/8, 5/4, 3/2, 5/3, 2]
-    const notes = pentatonicRatios.map(ratio => baseFreq / 4 * ratio)
+    const randomTrack = vocalTracks[Math.floor(Math.random() * vocalTracks.length)]
 
-    // Criar pad suave com múltiplas camadas
-    notes.forEach((freq, index) => {
-      const osc = this.audioContext!.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.value = freq
+    this.audioElement = new Audio(randomTrack)
+    this.audioElement.loop = true
+    this.audioElement.volume = 0.3
+    this.audioElement.crossOrigin = 'anonymous'
 
-      const lfo = this.audioContext!.createOscillator()
-      lfo.frequency.value = 0.1 + (index * 0.05)
-      const lfoGain = this.audioContext!.createGain()
-      lfoGain.gain.value = 1.5
-      lfo.connect(lfoGain)
-      lfoGain.connect(osc.frequency)
-
-      const oscGain = this.audioContext!.createGain()
-      oscGain.gain.value = 0
-      oscGain.gain.setValueAtTime(0, now)
-      oscGain.gain.linearRampToValueAtTime(0.06 / (index + 1), now + 4)
-
-      osc.connect(oscGain)
-      oscGain.connect(this.masterGain!)
-
-      osc.start(now)
-      lfo.start(now)
-      this.sources.push(osc, lfo)
-    })
-
-    // Adicionar harmônicos e baixo
-    ;[2, 3, 4].forEach((mult, i) => {
-      const harmOsc = this.audioContext!.createOscillator()
-      harmOsc.type = 'sine'
-      harmOsc.frequency.value = (baseFreq / 4) * mult
-
-      const harmGain = this.audioContext!.createGain()
-      harmGain.gain.value = 0
-      harmGain.gain.setValueAtTime(0, now)
-      harmGain.gain.linearRampToValueAtTime(0.02 / (i + 2), now + 5)
-
-      harmOsc.connect(harmGain)
-      harmGain.connect(this.masterGain!)
-
-      harmOsc.start(now)
-      this.sources.push(harmOsc)
-    })
-
-    const bass = this.audioContext.createOscillator()
-    bass.type = 'sine'
-    bass.frequency.value = baseFreq / 8
-
-    const bassGain = this.audioContext.createGain()
-    bassGain.gain.value = 0
-    bassGain.gain.setValueAtTime(0, now)
-    bassGain.gain.linearRampToValueAtTime(0.08, now + 6)
-
-    bass.connect(bassGain)
-    bassGain.connect(this.masterGain)
-
-    bass.start(now)
-    this.sources.push(bass)
-
-    // Sinos tibetanos
-    const bellFreqs = [432, 540, 648]
-    bellFreqs.forEach((freq, index) => {
-      const bell = this.audioContext!.createOscillator()
-      bell.type = 'sine'
-      bell.frequency.value = freq
-
-      const bellGain = this.audioContext!.createGain()
-      const delay = index * 3 + 2
-      bellGain.gain.setValueAtTime(0, now + delay)
-      bellGain.gain.linearRampToValueAtTime(0.04, now + delay + 0.1)
-      bellGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 4)
-
-      bell.connect(bellGain)
-      bellGain.connect(this.masterGain!)
-
-      bell.start(now + delay)
-      this.sources.push(bell)
+    this.audioElement.play().catch(err => {
+      console.log('Carregando música com voz...', err)
+      // Fallback para instrumental se vocal não funcionar
+      this.playInstrumental()
     })
   }
 
   setVolume(value: number) {
-    if (this.masterGain) {
-      this.masterGain.gain.value = value
-    }
     if (this.audioElement) {
       this.audioElement.volume = value
     }
   }
 
   stop() {
-    // Parar áudio HTML
     if (this.audioElement) {
       this.audioElement.pause()
       this.audioElement.currentTime = 0
       this.audioElement = null
     }
-
-    // Parar osciladores Web Audio
-    this.sources.forEach(source => {
-      try {
-        source.stop()
-      } catch (e) {
-        // Já parado ou não iniciado
-      }
-    })
-    this.sources = []
-    this.nodes = []
   }
 
   destroy() {
     this.stop()
-    if (this.audioContext) {
-      this.audioContext.close()
-      this.audioContext = null
-    }
   }
 }
 
@@ -692,7 +541,7 @@ export function Meditation() {
   const [currentStep, setCurrentStep] = useState(0)
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [audioType, setAudioType] = useState<AudioType>('guiada')
-  const [musicVolume, setMusicVolume] = useState(0.15)
+  const [musicVolume, setMusicVolume] = useState(0.4)
   const [voiceVolume, setVoiceVolume] = useState(1.0)
 
   const audioGeneratorRef = useRef<AudioGenerator>(new AudioGenerator())
@@ -771,17 +620,21 @@ export function Meditation() {
       return
     }
 
-    generator.init()
     generator.setVolume(musicVolume)
 
+    // Escolher tipo de música baseado na opção selecionada
     if (audioType === 'natureza') {
+      // Apenas sons da natureza (ondas, chuva, cachoeira)
       generator.playNatureSounds()
-    } else if (audioType === 'musica' || audioType === 'musica-voz' || audioType === 'guiada') {
-      if (selectedMeditation.backgroundMusic === 'natureza') {
-        generator.playNatureSounds()
-      } else if (selectedMeditation.backgroundMusic === 'instrumental') {
-        generator.playInstrumental()
-      }
+    } else if (audioType === 'musica') {
+      // Apenas música instrumental (piano, violino, etc)
+      generator.playInstrumental()
+    } else if (audioType === 'musica-voz') {
+      // Música com letra/mantras
+      generator.playVocalMusic()
+    } else if (audioType === 'guiada') {
+      // Meditação guiada = Voz guia + sons da natureza de fundo
+      generator.playNatureSounds()
     }
 
     return () => {
@@ -935,29 +788,27 @@ export function Meditation() {
                 </div>
               )}
 
-              {audioType !== 'natureza' && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2">
-                      <Music className="w-4 h-4" />
-                      Volume da Música
-                    </Label>
-                    <span className="text-sm text-muted-foreground">
-                      {Math.round(musicVolume * 100)}%
-                    </span>
-                  </div>
-                  <Slider
-                    value={[musicVolume]}
-                    onValueChange={([value]) => {
-                      setMusicVolume(value)
-                      audioGeneratorRef.current.setVolume(value)
-                    }}
-                    max={0.5}
-                    step={0.05}
-                    className="w-full"
-                  />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Music className="w-4 h-4" />
+                    Volume da Música
+                  </Label>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round(musicVolume * 100)}%
+                  </span>
                 </div>
-              )}
+                <Slider
+                  value={[musicVolume]}
+                  onValueChange={([value]) => {
+                    setMusicVolume(value)
+                    audioGeneratorRef.current.setVolume(value)
+                  }}
+                  max={1}
+                  step={0.1}
+                  className="w-full"
+                />
+              </div>
             </div>
 
             {/* Dica */}
