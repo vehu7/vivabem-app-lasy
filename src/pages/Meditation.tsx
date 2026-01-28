@@ -405,29 +405,55 @@ const MEDITATIONS: MeditationSession[] = [
   }
 ]
 
-// Geradores de frequências de áudio para música de fundo
+// Geradores de áudio para meditação com IA
 class AudioGenerator {
   private audioContext: AudioContext | null = null
-  private gainNode: GainNode | null = null
-  private oscillators: OscillatorNode[] = []
+  private masterGain: GainNode | null = null
+  private nodes: AudioNode[] = []
+  private sources: AudioScheduledSourceNode[] = []
 
   init() {
     if (this.audioContext) return
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    this.gainNode = this.audioContext.createGain()
-    this.gainNode.connect(this.audioContext.destination)
-    this.gainNode.gain.value = 0.15
+    this.masterGain = this.audioContext.createGain()
+    this.masterGain.connect(this.audioContext.destination)
+    this.masterGain.gain.value = 0.3
   }
 
+  // Sons da natureza: Ondas do mar, pássaros, vento
   playNatureSounds() {
     this.stop()
-    if (!this.audioContext || !this.gainNode) return
+    if (!this.audioContext || !this.masterGain) return
 
-    // Ondas do mar (ruído rosa + modulação)
+    const now = this.audioContext.currentTime
+
+    // 1. Ondas suaves do mar (graves ondulantes)
+    const waveLFO = this.audioContext.createOscillator()
+    waveLFO.frequency.value = 0.15 // Ritmo lento das ondas
+    const waveLFOGain = this.audioContext.createGain()
+    waveLFOGain.gain.value = 30
+    waveLFO.connect(waveLFOGain)
+
+    const waveOsc = this.audioContext.createOscillator()
+    waveOsc.type = 'sine'
+    waveOsc.frequency.value = 80
+    waveLFOGain.connect(waveOsc.frequency)
+
+    const waveGain = this.audioContext.createGain()
+    waveGain.gain.value = 0.15
+    waveOsc.connect(waveGain)
+    waveGain.connect(this.masterGain)
+
+    waveOsc.start(now)
+    waveLFO.start(now)
+    this.sources.push(waveOsc, waveLFO)
+
+    // 2. Ruído suave de água (filtrado)
     const bufferSize = 2 * this.audioContext.sampleRate
     const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
     const output = noiseBuffer.getChannelData(0)
 
+    // Gerar ruído rosa (mais natural)
     let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
     for (let i = 0; i < bufferSize; i++) {
       const white = Math.random() * 2 - 1
@@ -437,8 +463,7 @@ class AudioGenerator {
       b3 = 0.86650 * b3 + white * 0.3104856
       b4 = 0.55000 * b4 + white * 0.5329522
       b5 = -0.7616 * b5 - white * 0.0168980
-      output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362
-      output[i] *= 0.11
+      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11
       b6 = white * 0.115926
     }
 
@@ -446,75 +471,186 @@ class AudioGenerator {
     noise.buffer = noiseBuffer
     noise.loop = true
 
-    const noiseGain = this.audioContext.createGain()
-    noiseGain.gain.value = 0.4
-    noise.connect(noiseGain)
-    noiseGain.connect(this.gainNode)
-    noise.start()
-    this.oscillators.push(noise as any)
+    // Filtro passa-baixa para som de água suave
+    const filter = this.audioContext.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 800
+    filter.Q.value = 0.5
 
-    // Tom grave de fundo (paz)
-    const osc = this.audioContext.createOscillator()
-    osc.type = 'sine'
-    osc.frequency.value = 110
-    const oscGain = this.audioContext.createGain()
-    oscGain.gain.value = 0.05
-    osc.connect(oscGain)
-    oscGain.connect(this.gainNode)
-    osc.start()
-    this.oscillators.push(osc)
+    const noiseGain = this.audioContext.createGain()
+    noiseGain.gain.value = 0.08
+
+    noise.connect(filter)
+    filter.connect(noiseGain)
+    noiseGain.connect(this.masterGain)
+    noise.start(now)
+    this.sources.push(noise)
+
+    // 3. Pássaros ocasionais (tons agudos aleatórios)
+    const createBirdSound = (delay: number) => {
+      const birdOsc = this.audioContext!.createOscillator()
+      birdOsc.type = 'sine'
+      birdOsc.frequency.value = 2000 + Math.random() * 1000
+
+      const birdGain = this.audioContext!.createGain()
+      birdGain.gain.setValueAtTime(0, now + delay)
+      birdGain.gain.linearRampToValueAtTime(0.03, now + delay + 0.05)
+      birdGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.4)
+
+      birdOsc.connect(birdGain)
+      birdGain.connect(this.masterGain!)
+
+      birdOsc.start(now + delay)
+      birdOsc.stop(now + delay + 0.5)
+      this.sources.push(birdOsc)
+    }
+
+    // Criar vários pássaros em tempos aleatórios
+    for (let i = 0; i < 8; i++) {
+      createBirdSound(Math.random() * 10 + i * 3)
+    }
+
+    // 4. Vento suave (ruído filtrado muito grave)
+    const windNoise = this.audioContext.createBufferSource()
+    windNoise.buffer = noiseBuffer
+    windNoise.loop = true
+
+    const windFilter = this.audioContext.createBiquadFilter()
+    windFilter.type = 'lowpass'
+    windFilter.frequency.value = 300
+    windFilter.Q.value = 1
+
+    const windGain = this.audioContext.createGain()
+    windGain.gain.value = 0.05
+
+    windNoise.connect(windFilter)
+    windFilter.connect(windGain)
+    windGain.connect(this.masterGain)
+    windNoise.start(now)
+    this.sources.push(windNoise)
   }
 
+  // Música instrumental: Tons harmônicos em 432Hz (frequência de cura)
   playInstrumental() {
     this.stop()
-    if (!this.audioContext || !this.gainNode) return
+    if (!this.audioContext || !this.masterGain) return
 
-    // Tons harmônicos relaxantes (432 Hz base)
-    const frequencies = [432, 540, 648, 810] // Harmônicos
+    const now = this.audioContext.currentTime
 
-    frequencies.forEach((freq, index) => {
+    // Escala pentatônica em 432Hz (muito usada em meditação)
+    // Dó, Ré, Mi, Sol, Lá - sem semitons (som mais harmonioso)
+    const baseFreq = 432 // Hz de cura
+    const pentatonicRatios = [
+      1,      // Fundamental (Dó)
+      9/8,    // Ré
+      5/4,    // Mi
+      3/2,    // Sol
+      5/3,    // Lá
+      2,      // Oitava
+    ]
+
+    const notes = pentatonicRatios.map(ratio => baseFreq / 4 * ratio) // Uma oitava abaixo
+
+    // Criar pad suave com múltiplas camadas
+    notes.forEach((freq, index) => {
+      // Oscilador principal
       const osc = this.audioContext!.createOscillator()
       osc.type = 'sine'
-      osc.frequency.value = freq / 4
+      osc.frequency.value = freq
 
-      const oscGain = this.audioContext!.createGain()
-      oscGain.gain.value = 0.08 / (index + 1)
-
-      // Modulação suave
+      // LFO para vibrato suave
       const lfo = this.audioContext!.createOscillator()
-      lfo.frequency.value = 0.2 + (index * 0.1)
+      lfo.frequency.value = 0.1 + (index * 0.05)
       const lfoGain = this.audioContext!.createGain()
-      lfoGain.gain.value = 2
-
+      lfoGain.gain.value = 1.5
       lfo.connect(lfoGain)
       lfoGain.connect(osc.frequency)
 
+      // Envelope de volume (fade in/out suave)
+      const oscGain = this.audioContext!.createGain()
+      oscGain.gain.value = 0
+      oscGain.gain.setValueAtTime(0, now)
+      oscGain.gain.linearRampToValueAtTime(0.06 / (index + 1), now + 4)
+
       osc.connect(oscGain)
-      oscGain.connect(this.gainNode!)
+      oscGain.connect(this.masterGain!)
 
-      osc.start()
-      lfo.start()
+      osc.start(now)
+      lfo.start(now)
+      this.sources.push(osc, lfo)
+    })
 
-      this.oscillators.push(osc)
-      this.oscillators.push(lfo)
+    // Adicionar harmônicos superiores suaves
+    ;[2, 3, 4].forEach((mult, i) => {
+      const harmOsc = this.audioContext!.createOscillator()
+      harmOsc.type = 'sine'
+      harmOsc.frequency.value = (baseFreq / 4) * mult
+
+      const harmGain = this.audioContext!.createGain()
+      harmGain.gain.value = 0
+      harmGain.gain.setValueAtTime(0, now)
+      harmGain.gain.linearRampToValueAtTime(0.02 / (i + 2), now + 5)
+
+      harmOsc.connect(harmGain)
+      harmGain.connect(this.masterGain!)
+
+      harmOsc.start(now)
+      this.sources.push(harmOsc)
+    })
+
+    // Baixo profundo para fundação
+    const bass = this.audioContext.createOscillator()
+    bass.type = 'sine'
+    bass.frequency.value = baseFreq / 8
+
+    const bassGain = this.audioContext.createGain()
+    bassGain.gain.value = 0
+    bassGain.gain.setValueAtTime(0, now)
+    bassGain.gain.linearRampToValueAtTime(0.08, now + 6)
+
+    bass.connect(bassGain)
+    bassGain.connect(this.masterGain)
+
+    bass.start(now)
+    this.sources.push(bass)
+
+    // Sinos tibetanos (frequências específicas)
+    const bellFreqs = [432, 540, 648]
+    bellFreqs.forEach((freq, index) => {
+      const bell = this.audioContext!.createOscillator()
+      bell.type = 'sine'
+      bell.frequency.value = freq
+
+      const bellGain = this.audioContext!.createGain()
+      const delay = index * 3 + 2
+      bellGain.gain.setValueAtTime(0, now + delay)
+      bellGain.gain.linearRampToValueAtTime(0.04, now + delay + 0.1)
+      bellGain.gain.exponentialRampToValueAtTime(0.001, now + delay + 4)
+
+      bell.connect(bellGain)
+      bellGain.connect(this.masterGain!)
+
+      bell.start(now + delay)
+      this.sources.push(bell)
     })
   }
 
   setVolume(value: number) {
-    if (this.gainNode) {
-      this.gainNode.gain.value = value
+    if (this.masterGain) {
+      this.masterGain.gain.value = value
     }
   }
 
   stop() {
-    this.oscillators.forEach(osc => {
+    this.sources.forEach(source => {
       try {
-        osc.stop()
+        source.stop()
       } catch (e) {
-        // Ignorar erros de stop
+        // Já parado ou não iniciado
       }
     })
-    this.oscillators = []
+    this.sources = []
+    this.nodes = []
   }
 
   destroy() {
