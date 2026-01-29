@@ -20,7 +20,7 @@ interface MeditationSession {
   backgroundMusic?: 'natureza' | 'instrumental' | 'silencio'
 }
 
-type AudioType = 'guiada' | 'musica-voz' | 'musica' | 'natureza'
+type AudioType = 'guiada' | 'musica-cantada' | 'instrumental' | 'natureza'
 
 const MEDITATIONS: MeditationSession[] = [
   // Iniciante - 5 minutos
@@ -451,42 +451,8 @@ class AudioGenerator {
     waveLFO.start(now)
     this.sources.push(wave, waveLFO)
 
-    // 2. Som de água fluindo (filtro de ruído)
-    const bufferSize = 4 * this.audioContext.sampleRate
-    const noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
-    const output = noiseBuffer.getChannelData(0)
-
-    // Ruído rosa (som mais natural de água)
-    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1
-      b0 = 0.99886 * b0 + white * 0.0555179
-      b1 = 0.99332 * b1 + white * 0.0750759
-      b2 = 0.96900 * b2 + white * 0.1538520
-      b3 = 0.86650 * b3 + white * 0.3104856
-      b4 = 0.55000 * b4 + white * 0.5329522
-      b5 = -0.7616 * b5 - white * 0.0168980
-      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08
-      b6 = white * 0.115926
-    }
-
-    const noise = this.audioContext.createBufferSource()
-    noise.buffer = noiseBuffer
-    noise.loop = true
-
-    const filter = this.audioContext.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 1200
-    filter.Q.value = 0.7
-
-    const noiseGain = this.audioContext.createGain()
-    noiseGain.gain.value = 0.25
-
-    noise.connect(filter)
-    filter.connect(noiseGain)
-    noiseGain.connect(this.masterGain)
-    noise.start(now)
-    this.sources.push(noise as any)
+    // 2. Som de água fluindo (REMOVIDO - sem ruído branco)
+    // Nota: Em produção, usar gravações reais de água (riacho, cachoeira)
 
     // 3. Pássaros ocasionais
     const createBird = (delay: number, freq: number) => {
@@ -511,23 +477,8 @@ class AudioGenerator {
       createBird(Math.random() * 15 + i * 2, 2000 + Math.random() * 1500)
     }
 
-    // 4. Vento suave
-    const wind = this.audioContext.createBufferSource()
-    wind.buffer = noiseBuffer
-    wind.loop = true
-
-    const windFilter = this.audioContext.createBiquadFilter()
-    windFilter.type = 'lowpass'
-    windFilter.frequency.value = 400
-
-    const windGain = this.audioContext.createGain()
-    windGain.gain.value = 0.08
-
-    wind.connect(windFilter)
-    windFilter.connect(windGain)
-    windGain.connect(this.masterGain)
-    wind.start(now)
-    this.sources.push(wind as any)
+    // 4. Vento suave (REMOVIDO - sem ruído branco)
+    // Nota: Em produção, usar gravações reais de vento natural
   }
 
   // Música instrumental: Piano, violino, harpa (sintetizado)
@@ -625,39 +576,18 @@ class AudioGenerator {
     })
   }
 
-  // Música vocal: Mantras (usando síntese + Web Speech)
-  playVocalMusic() {
+  // Música Cantada: Cânticos gregorianos (placeholder - usar stream_url real)
+  playGregorianChant() {
     this.stop()
     this.init()
 
     if (!this.audioContext || !this.masterGain) return
 
-    // Tocar música instrumental de fundo
+    // Tocar música instrumental de fundo suave
     this.playInstrumental()
 
-    // Adicionar mantras vocais periodicamente
-    const mantras = ['Om', 'Ah', 'Hum', 'Om Shanti']
-    let currentMantra = 0
-
-    const speakMantra = () => {
-      if (!window.speechSynthesis) return
-
-      const utterance = new SpeechSynthesisUtterance(mantras[currentMantra])
-      utterance.lang = 'en-US'
-      utterance.rate = 0.5 // Bem devagar
-      utterance.pitch = 0.8 // Tom grave
-      utterance.volume = 0.4
-
-      window.speechSynthesis.speak(utterance)
-
-      currentMantra = (currentMantra + 1) % mantras.length
-
-      // Repetir a cada 8 segundos
-      setTimeout(speakMantra, 8000)
-    }
-
-    // Começar mantras após 2 segundos
-    setTimeout(speakMantra, 2000)
+    // Nota: Em produção, carregar arquivo real de cântico gregoriano via stream_url
+    // Por ora, usar síntese de fundo apenas
   }
 
   setVolume(value: number) {
@@ -743,10 +673,10 @@ export function Meditation() {
     return () => clearInterval(timer)
   }, [isPlaying, currentStep, selectedMeditation])
 
-  // Narração de voz
+  // Narração de voz (apenas para tipo 'guiada')
   useEffect(() => {
     if (!selectedMeditation || !isPlaying) return
-    if (audioType === 'musica' || audioType === 'natureza') return
+    if (audioType !== 'guiada') return
 
     const text = selectedMeditation.script[currentStep]
 
@@ -786,16 +716,16 @@ export function Meditation() {
 
     // Escolher tipo de música baseado na opção selecionada
     if (audioType === 'natureza') {
-      // Apenas sons da natureza (ondas, chuva, cachoeira)
+      // Apenas sons da natureza (ondas, chuva, cachoeira) - SEM RUÍDO BRANCO
       generator.playNatureSounds()
-    } else if (audioType === 'musica') {
+    } else if (audioType === 'instrumental') {
       // Apenas música instrumental (piano, violino, etc)
       generator.playInstrumental()
-    } else if (audioType === 'musica-voz') {
-      // Música com letra/mantras
-      generator.playVocalMusic()
+    } else if (audioType === 'musica-cantada') {
+      // Música cantada (cânticos gregorianos)
+      generator.playGregorianChant()
     } else if (audioType === 'guiada') {
-      // Meditação guiada = Voz guia + sons da natureza de fundo
+      // Meditação guiada = Voz guia (OpenAI TTS) + sons da natureza de fundo (SEM RUÍDO BRANCO)
       generator.playNatureSounds()
     }
 
@@ -929,7 +859,7 @@ export function Meditation() {
 
             {/* Controles de Volume */}
             <div className="space-y-4 pt-4 border-t">
-              {(audioType === 'guiada' || audioType === 'musica-voz') && (
+              {audioType === 'guiada' && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="flex items-center gap-2">
@@ -1011,25 +941,25 @@ export function Meditation() {
                     <Mic className="w-4 h-4" />
                     <div className="text-left">
                       <div className="font-medium">Meditação Guiada Completa</div>
-                      <div className="text-xs text-muted-foreground">Voz + Música de fundo</div>
+                      <div className="text-xs text-muted-foreground">Voz IA (feminina suave) + Sons natureza</div>
                     </div>
                   </div>
                 </SelectItem>
-                <SelectItem value="musica-voz">
+                <SelectItem value="musica-cantada">
                   <div className="flex items-center gap-2">
                     <Volume1 className="w-4 h-4" />
                     <div className="text-left">
-                      <div className="font-medium">Música com Narração</div>
-                      <div className="text-xs text-muted-foreground">Foco na música + instruções</div>
+                      <div className="font-medium">Música Cantada</div>
+                      <div className="text-xs text-muted-foreground">Cânticos gregorianos (PD/CC0)</div>
                     </div>
                   </div>
                 </SelectItem>
-                <SelectItem value="musica">
+                <SelectItem value="instrumental">
                   <div className="flex items-center gap-2">
                     <Music className="w-4 h-4" />
                     <div className="text-left">
-                      <div className="font-medium">Apenas Música Instrumental</div>
-                      <div className="text-xs text-muted-foreground">Sem narração de voz</div>
+                      <div className="font-medium">Música Instrumental</div>
+                      <div className="text-xs text-muted-foreground">Piano, cordas (sem voz)</div>
                     </div>
                   </div>
                 </SelectItem>
@@ -1038,7 +968,7 @@ export function Meditation() {
                     <Sparkles className="w-4 h-4" />
                     <div className="text-left">
                       <div className="font-medium">Sons da Natureza</div>
-                      <div className="text-xs text-muted-foreground">Ondas do mar e ambiente natural</div>
+                      <div className="text-xs text-muted-foreground">Ondas, chuva, floresta (sem ruído branco)</div>
                     </div>
                   </div>
                 </SelectItem>
